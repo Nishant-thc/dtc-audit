@@ -1,0 +1,62 @@
+rules:
+  - ruleId: PRICE-001
+    version: "1.0.0"
+    module: price-promo-mapper
+    toolId: tool-05-price-promo-mapper
+    title: Out-of-stock product pages exposed in active catalogue
+    category: Merchandising improvement
+    requiredDataFields:
+      - availability
+      - price
+    detectionCondition:
+      entity: product
+      check: out_of_stock_product_pages
+    applicablePageTypes:
+      - product
+    severity: 4
+    impactScore: 4
+    recommendationText: Add back-in-stock email capture or related in-stock alternatives on out-of-stock product pages, and demote sold-out items in collection sort order.
+    supportingEvidenceTemplate: "Detected {affected} of {inspected} inspected product pages ({coveragePct}%) in an out-of-stock state."
+    howDetected: Checked visible CTA button state and Offer.availability schema for out-of-stock signals.
+
+  - ruleId: PRICE-002
+    version: "1.0.0"
+    module: price-promo-mapper
+    toolId: tool-05-price-promo-mapper
+    title: Extreme compare-at discount percentages (>=50% off) detected
+    category: Merchandising improvement
+    requiredDataFields:
+      - price
+      - originalPrice
+      - discountPercentage
+    detectionCondition:
+      entity: product
+      check: extreme_or_unverified_discount
+      threshold: 50
+    applicablePageTypes:
+      - product
+    severity: 3
+    impactScore: 3
+    recommendationText: Audit compare-at prices on products showing >=50% markdowns to ensure promotional pricing is accurate and compliant with reference-pricing standards.
+    supportingEvidenceTemplate: "Detected {affected} of {inspected} products ({coveragePct}%) displaying a compare-at discount of 50% or greater."
+    howDetected: Calculated ((originalPrice - price) / originalPrice) * 100 from extracted public price and compare-at price elements.
+
+  - ruleId: PRICE-003
+    version: "1.0.0"
+    module: price-promo-mapper
+    toolId: tool-05-price-promo-mapper
+    title: Products without observable bundle or subscription options
+    category: Merchandising improvement
+    requiredDataFields:
+      - hasBundleOrSubscription
+    detectionCondition:
+      entity: product
+      check: missing_bundle_or_subscription_option
+    applicablePageTypes:
+      - product
+    severity: 2
+    impactScore: 3
+    recommendationText: Review whether replenishment or multi-item bundle options are applicable on hero product templates.
+    supportingEvidenceTemplate: "Detected {affected} of {inspected} products ({coveragePct}%) without observable bundle or subscription signals."
+    howDetected: Checked product page DOM for subscription widgets, 'Subscribe & Save', or bundle offer components.
+

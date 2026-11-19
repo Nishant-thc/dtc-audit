@@ -1,0 +1,41 @@
+rules:
+  - ruleId: PERF-001
+    version: "1.0.0"
+    module: tech-perf-inspector
+    toolId: tool-12-tech-perf-inspector
+    title: Excessive third-party script tags (>5 external scripts) detected
+    category: Performance improvement
+    requiredDataFields:
+      - metric
+      - value
+    detectionCondition:
+      entity: observation
+      check: excessive_third_party_scripts
+      threshold: 5
+    applicablePageTypes: []
+    severity: 4
+    impactScore: 4
+    recommendationText: Audit third-party marketing pixels, chat widgets, and analytics tags; consolidate via tag management or defer non-critical scripts until user interaction.
+    supportingEvidenceTemplate: "Detected {affected} of {inspected} inspected pages ({coveragePct}%) loading more than 5 external third-party scripts."
+    howDetected: Counted external <script src="https://..."> tags and third-party network requests on sampled pages.
+
+  - ruleId: PERF-002
+    version: "1.0.0"
+    module: tech-perf-inspector
+    toolId: tool-12-tech-perf-inspector
+    title: Below-the-fold images missing loading="lazy" attribute
+    category: Performance improvement
+    requiredDataFields:
+      - metric
+      - value
+    detectionCondition:
+      entity: observation
+      check: missing_lazy_loading_on_images
+      threshold: 60
+    applicablePageTypes: []
+    severity: 3
+    impactScore: 3
+    recommendationText: Add loading="lazy" to below-the-fold product gallery and collection grid images while keeping the primary LCP hero image eager.
+    supportingEvidenceTemplate: "Detected {affected} of {inspected} pages ({coveragePct}%) where fewer than 60% of images use native lazy loading."
+    howDetected: Calculated the share of <img> tags with loading="lazy" or lazy-load data attributes per page.
+

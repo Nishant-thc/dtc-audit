@@ -1,0 +1,29 @@
+{
+  "toolId": "tool-06-collection-gap-finder",
+  "slug": "collection-gap-finder",
+  "number": 6,
+  "name": "Collection Content Gap Finder",
+  "navGroup": "Categories",
+  "oneLinePromise": "Identify thin collection and category pages missing intro copy, metadata, products, or internal inbound link support.",
+  "problemId": "P5",
+  "problemStatement": "Collection pages are a bare grid of products with no intro content, missing metadata, and weak links, yet they target the highest-value commercial queries.",
+  "whoUsesIt": [
+    "Ecommerce SEOs",
+    "Category managers"
+  ],
+  "estimatedTimeLabel": "~2 min",
+  "requiredEntities": [
+    "Collection",
+    "Page",
+    "Link"
+  ],
+  "requiredCrawlLevels": [
+    "B"
+  ],
+  "ownedRuleIds": [
+    "COLL-001",
+    "COLL-002",
+    "COLL-003"
+  ]
+}
+

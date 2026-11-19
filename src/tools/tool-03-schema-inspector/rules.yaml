@@ -1,0 +1,85 @@
+rules:
+  - ruleId: SCHEMA-001
+    version: "1.0.0"
+    module: schema-inspector
+    toolId: tool-03-schema-inspector
+    title: Missing Product structured data on product pages
+    category: Technical SEO
+    requiredDataFields:
+      - schemaType
+      - pageType
+    detectionCondition:
+      entity: schema
+      check: missing_product_schema
+    applicablePageTypes:
+      - product
+    severity: 5
+    impactScore: 5
+    recommendationText: Output valid JSON-LD Product structured data with nested Offer and AggregateRating properties in the product page template.
+    supportingEvidenceTemplate: "Detected {affected} of {inspected} product pages ({coveragePct}%) without Product structured data (template: {template})."
+    howDetected: Checked all extracted JSON-LD, Microdata, and RDFa blocks on product pages for @type Product.
+
+  - ruleId: SCHEMA-002
+    version: "1.0.0"
+    module: schema-inspector
+    toolId: tool-03-schema-inspector
+    title: Incomplete Product or Offer structured data fields
+    category: Technical SEO
+    requiredDataFields:
+      - requiredFieldsMissing
+      - recommendedFieldsMissing
+      - isValid
+    detectionCondition:
+      entity: schema
+      check: incomplete_product_or_offer_schema
+    applicablePageTypes:
+      - product
+    severity: 4
+    impactScore: 4
+    recommendationText: Populate all required and recommended Product/Offer fields (name, offers, price, priceCurrency, availability, sku, brand, image, description, aggregateRating).
+    supportingEvidenceTemplate: "Detected {affected} of {inspected} product schema pages ({coveragePct}%) missing required or key recommended rich-result fields."
+    howDetected: Validated extracted Product and Offer schema properties against schema.org merchant listing field requirements.
+
+  - ruleId: SCHEMA-003
+    version: "1.0.0"
+    module: schema-inspector
+    toolId: tool-03-schema-inspector
+    title: Missing BreadcrumbList structured data on interior pages
+    category: Technical SEO
+    requiredDataFields:
+      - schemaType
+      - pageType
+    detectionCondition:
+      entity: schema
+      check: missing_breadcrumb_schema
+    applicablePageTypes:
+      - product
+      - collection
+      - category
+      - blog
+    severity: 3
+    impactScore: 3
+    recommendationText: Add BreadcrumbList JSON-LD structured data to product, collection, and article templates to clarify site hierarchy in search snippets.
+    supportingEvidenceTemplate: "Detected {affected} of {inspected} interior pages ({coveragePct}%) without BreadcrumbList schema (template: {template})."
+    howDetected: Checked interior product, collection, category, and blog pages for @type BreadcrumbList.
+
+  - ruleId: SCHEMA-004
+    version: "1.0.0"
+    module: schema-inspector
+    toolId: tool-03-schema-inspector
+    title: Mismatch between schema Offer price/availability and visible page values
+    category: Product optimization
+    requiredDataFields:
+      - priceMatchesVisible
+      - availabilityMatchesVisible
+    detectionCondition:
+      entity: schema
+      check: schema_visible_mismatch
+    applicablePageTypes:
+      - product
+    severity: 5
+    impactScore: 5
+    recommendationText: Synchronise JSON-LD Offer price and availability fields with the active default variant rendered in the visible DOM.
+    supportingEvidenceTemplate: "Detected {affected} of {inspected} verified Offer schemas ({coveragePct}%) where structured data price or stock status disagrees with visible DOM values."
+    howDetected: Compared Offer.price and Offer.availability in structured data against visible price text and CTA button stock state.
+

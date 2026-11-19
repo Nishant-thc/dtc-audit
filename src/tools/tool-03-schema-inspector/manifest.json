@@ -1,0 +1,30 @@
+{
+  "toolId": "tool-03-schema-inspector",
+  "slug": "schema-inspector",
+  "number": 3,
+  "name": "Schema Coverage Inspector",
+  "navGroup": "SEO",
+  "oneLinePromise": "Audit JSON-LD, Microdata, and RDFa structured data completeness and price/availability parity across every template.",
+  "problemId": "P3",
+  "problemStatement": "Product schema is missing, partial, or inconsistent with visible page prices and stock states, disqualifying pages from rich results.",
+  "whoUsesIt": [
+    "Ecommerce SEOs",
+    "Frontend & theme developers"
+  ],
+  "estimatedTimeLabel": "~2 min",
+  "requiredEntities": [
+    "Page",
+    "Schema",
+    "Product"
+  ],
+  "requiredCrawlLevels": [
+    "B"
+  ],
+  "ownedRuleIds": [
+    "SCHEMA-001",
+    "SCHEMA-002",
+    "SCHEMA-003",
+    "SCHEMA-004"
+  ]
+}
+

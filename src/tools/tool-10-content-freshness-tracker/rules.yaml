@@ -1,0 +1,47 @@
+rules:
+  - ruleId: FRESH-001
+    version: "1.0.0"
+    module: content-freshness-tracker
+    toolId: tool-10-content-freshness-tracker
+    title: Stale editorial content (>365 days old) or missing publication dates
+    category: Content optimization
+    requiredDataFields:
+      - publishedDate
+      - modifiedDate
+      - freshnessDays
+    detectionCondition:
+      entity: content
+      check: stale_article_content
+      threshold: 365
+    applicablePageTypes:
+      - blog
+      - informational
+    severity: 3
+    impactScore: 4
+    recommendationText: Refresh articles older than 12 months with current product links and updated specifications, and expose visible/schema datePublished and dateModified values.
+    supportingEvidenceTemplate: "Detected {affected} of {inspected} editorial pages ({coveragePct}%) with last-updated dates older than 365 days or missing dates."
+    howDetected: Parsed datePublished/dateModified from Article schema, OpenGraph meta tags, and <time datetime> elements.
+
+  - ruleId: FRESH-002
+    version: "1.0.0"
+    module: content-freshness-tracker
+    toolId: tool-10-content-freshness-tracker
+    title: Thin (<400 words), unstructured (<2 H2s), or missing Article schema on editorial content
+    category: Content optimization
+    requiredDataFields:
+      - wordCount
+      - h2Count
+      - hasArticleSchema
+    detectionCondition:
+      entity: content
+      check: thin_or_unstructured_article
+      threshold: 400
+    applicablePageTypes:
+      - blog
+      - informational
+    severity: 4
+    impactScore: 4
+    recommendationText: Expand thin articles to at least 400 words with clear H2 subheadings and add Article or BlogPosting JSON-LD structured data.
+    supportingEvidenceTemplate: "Detected {affected} of {inspected} editorial pages ({coveragePct}%) with <400 words, <2 H2 headings, or missing Article schema."
+    howDetected: Evaluated word count, H2 count, and Article/BlogPosting JSON-LD presence on extracted editorial pages.
+

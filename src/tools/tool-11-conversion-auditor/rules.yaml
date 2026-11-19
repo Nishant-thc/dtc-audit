@@ -1,0 +1,43 @@
+rules:
+  - ruleId: CRO-001
+    version: "1.0.0"
+    module: conversion-auditor
+    toolId: tool-11-conversion-auditor
+    title: Sampled pages missing observable trust badges or delivery/returns info
+    category: Conversion optimization
+    requiredDataFields:
+      - metric
+      - value
+    detectionCondition:
+      entity: observation
+      check: missing_trust_or_delivery_signals
+    applicablePageTypes:
+      - product
+      - collection
+      - landing
+    severity: 4
+    impactScore: 4
+    recommendationText: Standardise product and landing templates to display clear shipping timelines, return policies, and checkout security signals near the primary CTA.
+    supportingEvidenceTemplate: "Detected {affected} of {inspected} inspected pages ({coveragePct}%) missing observable delivery/returns or trust signals (template: {template})."
+    howDetected: Checked rendered and raw DOM for shipping/returns copy and trust badge components per template.
+
+  - ruleId: CRO-002
+    version: "1.0.0"
+    module: conversion-auditor
+    toolId: tool-11-conversion-auditor
+    title: Product pages missing observable customer review section
+    category: Trust improvement
+    requiredDataFields:
+      - metric
+      - value
+    detectionCondition:
+      entity: observation
+      check: missing_review_widget_on_product
+    applicablePageTypes:
+      - product
+    severity: 3
+    impactScore: 4
+    recommendationText: Ensure all product page templates render a visible customer review widget or rating summary.
+    supportingEvidenceTemplate: "Detected {affected} of {inspected} product pages ({coveragePct}%) without an observable review widget."
+    howDetected: Checked DOM and rendered widgets for review section selectors across product templates.
+

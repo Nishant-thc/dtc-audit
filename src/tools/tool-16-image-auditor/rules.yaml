@@ -1,0 +1,57 @@
+rules:
+  - ruleId: IMG-001
+    version: "1.0.0"
+    module: image-auditor
+    toolId: tool-16-image-auditor
+    title: Pages containing images without descriptive alt text
+    category: On-page SEO
+    requiredDataFields:
+      - hasAlt
+      - altText
+    detectionCondition:
+      entity: image
+      check: image_missing_alt
+    applicablePageTypes: []
+    severity: 3
+    impactScore: 3
+    recommendationText: Add descriptive alt text to all informative product, collection, and article images for screen-reader accessibility and image search indexing.
+    supportingEvidenceTemplate: "Detected {affected} of {inspected} pages with images ({coveragePct}%) containing at least one image without alt text."
+    howDetected: Checked alt attribute presence and non-empty value across all extracted <img> elements.
+
+  - ruleId: IMG-002
+    version: "1.0.0"
+    module: image-auditor
+    toolId: tool-16-image-auditor
+    title: Pages serving legacy image formats (JPG/PNG/GIF) instead of WebP or AVIF
+    category: Performance improvement
+    requiredDataFields:
+      - format
+    detectionCondition:
+      entity: image
+      check: image_legacy_format
+    applicablePageTypes: []
+    severity: 3
+    impactScore: 4
+    recommendationText: Serve product and collection imagery in modern WebP or AVIF formats via CDN auto-format parameters or <picture> elements.
+    supportingEvidenceTemplate: "Detected {affected} of {inspected} pages with images ({coveragePct}%) serving unoptimised legacy image formats."
+    howDetected: Inspected file extensions and CDN format parameters on extracted image URLs.
+
+  - ruleId: IMG-003
+    version: "1.0.0"
+    module: image-auditor
+    toolId: tool-16-image-auditor
+    title: Images missing explicit width and height attributes (CLS risk)
+    category: Performance improvement
+    requiredDataFields:
+      - width
+      - height
+    detectionCondition:
+      entity: image
+      check: image_missing_dimensions
+    applicablePageTypes: []
+    severity: 3
+    impactScore: 3
+    recommendationText: Output explicit width and height HTML attributes on <img> tags so browsers reserve aspect-ratio space before image download.
+    supportingEvidenceTemplate: "Detected {affected} of {inspected} pages with images ({coveragePct}%) missing explicit width/height attributes on <img> tags."
+    howDetected: Checked width and height attributes on all extracted <img> elements.
+

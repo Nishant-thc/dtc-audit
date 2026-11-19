@@ -1,0 +1,104 @@
+rules:
+  - ruleId: CAT-001
+    version: "1.0.0"
+    module: catalogue-scanner
+    toolId: tool-04-catalogue-scanner
+    title: Product pages with thin or missing descriptions (<30 words)
+    category: Product optimization
+    requiredDataFields:
+      - descriptionWordCount
+      - descriptionText
+    detectionCondition:
+      entity: product
+      check: thin_product_description
+      threshold: 30
+    applicablePageTypes:
+      - product
+    severity: 4
+    impactScore: 4
+    recommendationText: Expand product descriptions to at least 50–150 words covering materials, use cases, sizing, and care instructions.
+    supportingEvidenceTemplate: "Detected {affected} of {inspected} product pages ({coveragePct}%) with fewer than 30 words of product description copy."
+    howDetected: Counted words inside the primary product description container and Product schema description field.
+
+  - ruleId: CAT-002
+    version: "1.0.0"
+    module: catalogue-scanner
+    toolId: tool-04-catalogue-scanner
+    title: Product pages missing structured specifications table or list
+    category: Merchandising improvement
+    requiredDataFields:
+      - specsCount
+      - specs
+    detectionCondition:
+      entity: product
+      check: missing_product_specs
+      threshold: 2
+    applicablePageTypes:
+      - product
+    severity: 3
+    impactScore: 3
+    recommendationText: Add a structured specifications table or definition list (dimensions, weight, materials, SKU/fit) to product templates.
+    supportingEvidenceTemplate: "Detected {affected} of {inspected} product pages ({coveragePct}%) with fewer than 2 structured specification rows."
+    howDetected: Parsed specification tables (<table>) and definition lists (<dl>) on product pages.
+
+  - ruleId: CAT-003
+    version: "1.0.0"
+    module: catalogue-scanner
+    toolId: tool-04-catalogue-scanner
+    title: Product images missing descriptive alt attributes
+    category: Product optimization
+    requiredDataFields:
+      - imageCount
+      - imagesWithAltCount
+    detectionCondition:
+      entity: product
+      check: missing_product_image_alt
+    applicablePageTypes:
+      - product
+    severity: 3
+    impactScore: 3
+    recommendationText: Populate descriptive alt text on all product gallery images for accessibility and Google Images product discovery.
+    supportingEvidenceTemplate: "Detected {affected} of {inspected} product pages ({coveragePct}%) with missing image alt attributes."
+    howDetected: Checked alt attribute presence and non-empty text across all <img> elements on product pages.
+
+  - ruleId: CAT-004
+    version: "1.0.0"
+    module: catalogue-scanner
+    toolId: tool-04-catalogue-scanner
+    title: Product pages without visible reviews or rating signals
+    category: Trust improvement
+    requiredDataFields:
+      - hasReviews
+      - reviewCount
+    detectionCondition:
+      entity: product
+      check: missing_product_reviews
+    applicablePageTypes:
+      - product
+    severity: 3
+    impactScore: 4
+    recommendationText: Display customer review widgets and AggregateRating structured data on product pages where reviews exist.
+    supportingEvidenceTemplate: "Detected {affected} of {inspected} product pages ({coveragePct}%) without observable review widgets or rating schema."
+    howDetected: Checked DOM review containers and AggregateRating schema on product pages.
+
+  - ruleId: CAT-005
+    version: "1.0.0"
+    module: catalogue-scanner
+    toolId: tool-04-catalogue-scanner
+    title: Products with low overall catalogue completeness score (<70/100)
+    category: Merchandising improvement
+    requiredDataFields:
+      - completenessScore
+      - missingFields
+    detectionCondition:
+      entity: product
+      check: low_overall_product_completeness
+      threshold: 70
+    applicablePageTypes:
+      - product
+    severity: 4
+    impactScore: 4
+    recommendationText: Prioritise merchandising enrichment for products scoring below 70/100 across description, specs, imagery, alt text, schema, and reviews.
+    supportingEvidenceTemplate: "Detected {affected} of {inspected} products ({coveragePct}%) scoring below 70/100 on the catalogue completeness rubric."
+    howDetected: Computed deterministic 0–100 completeness score across 8 merchandising and SEO attributes per product.
+

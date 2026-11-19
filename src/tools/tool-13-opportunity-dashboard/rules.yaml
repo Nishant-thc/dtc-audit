@@ -1,0 +1,3 @@
+# Tool 13 aggregates and ranks findings emitted by Tools 1–12 using Priority Score = Impact x Coverage x Confidence.
+rules: []
+

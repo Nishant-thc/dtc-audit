@@ -1,0 +1,26 @@
+{
+  "toolId": "tool-15-change-tracker",
+  "slug": "change-tracker",
+  "number": 15,
+  "name": "Change Tracker (Fingerprint Diff Auditor)",
+  "navGroup": "Website Architecture",
+  "oneLinePromise": "Compare SHA-256 content fingerprints, titles, status codes, and product prices across crawls to track site changes.",
+  "problemId": "P1, P2",
+  "problemStatement": "Theme deployments and catalogue updates silently change titles, canonicals, status codes, or prices without an audit trail.",
+  "whoUsesIt": [
+    "Technical SEOs",
+    "In-house ecommerce managers",
+    "Developers"
+  ],
+  "estimatedTimeLabel": "~1–2 min",
+  "requiredEntities": [
+    "Crawl",
+    "Page",
+    "Product"
+  ],
+  "requiredCrawlLevels": [
+    "B"
+  ],
+  "ownedRuleIds": []
+}
+

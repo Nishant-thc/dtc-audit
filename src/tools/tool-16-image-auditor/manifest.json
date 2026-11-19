@@ -1,0 +1,29 @@
+{
+  "toolId": "tool-16-image-auditor",
+  "slug": "image-auditor",
+  "number": 16,
+  "name": "Image Optimisation Auditor",
+  "navGroup": "Technical",
+  "oneLinePromise": "Audit product and store imagery for missing alt text, legacy formats (JPG/PNG vs WebP/AVIF), missing width/height dimensions, and lazy loading.",
+  "problemId": "P4, P10",
+  "problemStatement": "Oversized legacy images without width/height attributes or alt text cause layout shifts (CLS), slow page loads, and lost Google Images discovery.",
+  "whoUsesIt": [
+    "Ecommerce SEOs",
+    "Frontend developers",
+    "Merchandisers"
+  ],
+  "estimatedTimeLabel": "~2 min",
+  "requiredEntities": [
+    "Image",
+    "Page"
+  ],
+  "requiredCrawlLevels": [
+    "B"
+  ],
+  "ownedRuleIds": [
+    "IMG-001",
+    "IMG-002",
+    "IMG-003"
+  ]
+}
+

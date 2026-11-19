@@ -1,0 +1,29 @@
+{
+  "toolId": "tool-05-price-promo-mapper",
+  "slug": "price-promo-mapper",
+  "number": 5,
+  "name": "Price & Promotion Mapper",
+  "navGroup": "Products",
+  "oneLinePromise": "Map observed public prices, discount depth, stock availability, and bundle/subscription coverage across the catalogue.",
+  "problemId": "P4",
+  "problemStatement": "Brands lose sight of their own discounting patterns, currency inconsistencies, and out-of-stock exposure across templates.",
+  "whoUsesIt": [
+    "Ecommerce managers",
+    "Agency pitch teams",
+    "Merchandisers"
+  ],
+  "estimatedTimeLabel": "~2 min",
+  "requiredEntities": [
+    "Product",
+    "Variant"
+  ],
+  "requiredCrawlLevels": [
+    "B"
+  ],
+  "ownedRuleIds": [
+    "PRICE-001",
+    "PRICE-002",
+    "PRICE-003"
+  ]
+}
+

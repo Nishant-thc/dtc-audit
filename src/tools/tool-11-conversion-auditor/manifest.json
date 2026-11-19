@@ -1,0 +1,30 @@
+{
+  "toolId": "tool-11-conversion-auditor",
+  "slug": "conversion-auditor",
+  "number": 11,
+  "name": "Conversion Element Auditor",
+  "navGroup": "Conversion",
+  "oneLinePromise": "Inspect sampled pages per template for observable CTAs, delivery/return policies, review widgets, trust signals, and cart drawers.",
+  "problemId": "P9",
+  "problemStatement": "Some product and collection pages lack delivery info, reviews, trust signals, or clear CTAs because templates differ.",
+  "whoUsesIt": [
+    "CRO specialists",
+    "Ecommerce managers",
+    "UX & merchandising teams"
+  ],
+  "estimatedTimeLabel": "~3 min",
+  "requiredEntities": [
+    "Observation",
+    "Page",
+    "Product"
+  ],
+  "requiredCrawlLevels": [
+    "B",
+    "C"
+  ],
+  "ownedRuleIds": [
+    "CRO-001",
+    "CRO-002"
+  ]
+}
+

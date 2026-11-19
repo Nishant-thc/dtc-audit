@@ -1,0 +1,153 @@
+rules:
+  - ruleId: META-001
+    version: "1.0.0"
+    module: metadata-auditor
+    toolId: tool-02-metadata-auditor
+    title: Missing, truncated, or overly short page titles
+    category: On-page SEO
+    requiredDataFields:
+      - title
+      - status
+    detectionCondition:
+      entity: page
+      check: missing_or_short_title
+      threshold: 15
+    applicablePageTypes:
+      - homepage
+      - product
+      - collection
+      - category
+      - blog
+      - informational
+    severity: 4
+    impactScore: 4
+    recommendationText: Configure page templates to output descriptive, unique <title> elements between 15 and 65 characters.
+    supportingEvidenceTemplate: "Detected {affected} of {inspected} 200 OK pages ({coveragePct}%) with missing, <15 char, or >65 char titles (primary template: {template})."
+    howDetected: Extracted <title> text length on all 200 OK pages.
+
+  - ruleId: META-002
+    version: "1.0.0"
+    module: metadata-auditor
+    toolId: tool-02-metadata-auditor
+    title: Duplicate page titles across multiple URLs
+    category: On-page SEO
+    requiredDataFields:
+      - title
+      - status
+    detectionCondition:
+      entity: page
+      check: duplicate_title
+    applicablePageTypes:
+      - homepage
+      - product
+      - collection
+      - category
+      - blog
+      - informational
+    severity: 4
+    impactScore: 4
+    recommendationText: Differentiate templated <title> tags by dynamically injecting the product name, variant, or category name.
+    supportingEvidenceTemplate: "Detected {affected} of {inspected} 200 OK pages ({coveragePct}%) sharing identical <title> text (primary template: {template})."
+    howDetected: Grouped 200 OK pages by normalized lowercase <title> value.
+
+  - ruleId: META-003
+    version: "1.0.0"
+    module: metadata-auditor
+    toolId: tool-02-metadata-auditor
+    title: Missing or poorly sized meta descriptions
+    category: On-page SEO
+    requiredDataFields:
+      - metaDescription
+      - status
+    detectionCondition:
+      entity: page
+      check: missing_meta_description
+    applicablePageTypes:
+      - homepage
+      - product
+      - collection
+      - category
+      - blog
+      - informational
+    severity: 3
+    impactScore: 3
+    recommendationText: Add unique meta descriptions between 50 and 165 characters to all indexable templates.
+    supportingEvidenceTemplate: "Detected {affected} of {inspected} 200 OK pages ({coveragePct}%) with missing, <50 char, or >165 char meta descriptions (template: {template})."
+    howDetected: Inspected <meta name="description"> presence and character length across 200 OK pages.
+
+  - ruleId: META-004
+    version: "1.0.0"
+    module: metadata-auditor
+    toolId: tool-02-metadata-auditor
+    title: Duplicate meta descriptions across multiple URLs
+    category: On-page SEO
+    requiredDataFields:
+      - metaDescription
+      - status
+    detectionCondition:
+      entity: page
+      check: duplicate_meta_description
+    applicablePageTypes:
+      - homepage
+      - product
+      - collection
+      - category
+      - blog
+      - informational
+    severity: 3
+    impactScore: 3
+    recommendationText: Replace boilerplate meta descriptions with product-specific or category-specific summary copy.
+    supportingEvidenceTemplate: "Detected {affected} of {inspected} 200 OK pages ({coveragePct}%) sharing identical meta descriptions."
+    howDetected: Grouped 200 OK pages by normalized lowercase meta description text.
+
+  - ruleId: META-005
+    version: "1.0.0"
+    module: metadata-auditor
+    toolId: tool-02-metadata-auditor
+    title: Missing or multiple H1 headings on page
+    category: On-page SEO
+    requiredDataFields:
+      - h1List
+      - status
+    detectionCondition:
+      entity: page
+      check: missing_or_multiple_h1
+    applicablePageTypes:
+      - homepage
+      - product
+      - collection
+      - category
+      - blog
+      - informational
+    severity: 3
+    impactScore: 3
+    recommendationText: Ensure each template outputs exactly one primary <h1> heading reflecting the page's main entity.
+    supportingEvidenceTemplate: "Detected {affected} of {inspected} 200 OK pages ({coveragePct}%) with zero or multiple <h1> elements (template: {template})."
+    howDetected: Counted <h1> DOM elements per extracted 200 OK page.
+
+  - ruleId: META-006
+    version: "1.0.0"
+    module: metadata-auditor
+    toolId: tool-02-metadata-auditor
+    title: Accidental noindex directive on commercial or editorial pages
+    category: Technical SEO
+    requiredDataFields:
+      - isNoindex
+      - robotsMeta
+      - xRobotsTag
+    detectionCondition:
+      entity: page
+      check: accidental_noindex_on_commercial_page
+    applicablePageTypes:
+      - homepage
+      - product
+      - collection
+      - category
+      - blog
+      - informational
+    severity: 5
+    impactScore: 5
+    recommendationText: Review and remove unintended noindex directives in <meta name="robots"> or X-Robots-Tag HTTP headers on pages meant to be indexed.
+    supportingEvidenceTemplate: "Detected {affected} of {inspected} commercial/editorial pages ({coveragePct}%) blocked from indexing by noindex."
+    howDetected: Checked <meta name="robots"> and X-Robots-Tag headers for 'noindex' on 200 OK commercial pages.
+

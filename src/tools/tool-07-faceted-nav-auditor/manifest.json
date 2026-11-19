@@ -1,0 +1,28 @@
+{
+  "toolId": "tool-07-faceted-nav-auditor",
+  "slug": "faceted-nav-auditor",
+  "number": 7,
+  "name": "Faceted Navigation & Parameter Auditor",
+  "navGroup": "Categories",
+  "oneLinePromise": "Inventory query parameters, filter combinations, pagination URLs, and canonical/robots handling to prevent crawl budget bloat.",
+  "problemId": "P6",
+  "problemStatement": "Faceted navigation and sort parameters create thousands of near-duplicate URLs that dilute link equity and waste search engine crawl budget.",
+  "whoUsesIt": [
+    "Technical SEOs",
+    "Ecommerce developers"
+  ],
+  "estimatedTimeLabel": "~2 min",
+  "requiredEntities": [
+    "Page",
+    "Collection",
+    "Sitemap"
+  ],
+  "requiredCrawlLevels": [
+    "B"
+  ],
+  "ownedRuleIds": [
+    "FACET-001",
+    "FACET-002"
+  ]
+}
+

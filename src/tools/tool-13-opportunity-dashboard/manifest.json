@@ -1,0 +1,29 @@
+{
+  "toolId": "tool-13-opportunity-dashboard",
+  "slug": "opportunity-dashboard",
+  "number": 13,
+  "name": "Opportunity Dashboard & Report Builder",
+  "navGroup": "Opportunities",
+  "oneLinePromise": "Aggregate, score (Impact × Coverage × Confidence), and rank findings across all tools into an evidence-backed, exportable audit report.",
+  "problemId": "P11, P12",
+  "problemStatement": "Clients get a 200-row unprioritised spreadsheet and do not know what to fix first, while agencies spend hours building manual pitch reports.",
+  "whoUsesIt": [
+    "Agencies & consultants",
+    "In-house growth & SEO leads",
+    "Merchandisers",
+    "Freelancers pitching prospects"
+  ],
+  "estimatedTimeLabel": "~1 min",
+  "requiredEntities": [
+    "Finding",
+    "Crawl",
+    "Page"
+  ],
+  "requiredCrawlLevels": [
+    "A",
+    "B",
+    "C"
+  ],
+  "ownedRuleIds": []
+}
+

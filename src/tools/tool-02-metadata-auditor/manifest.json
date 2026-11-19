@@ -1,0 +1,30 @@
+{
+  "toolId": "tool-02-metadata-auditor",
+  "slug": "metadata-auditor",
+  "number": 2,
+  "name": "Metadata & Indexability Auditor",
+  "navGroup": "SEO",
+  "oneLinePromise": "Detect missing, duplicate, or poorly sized titles, meta descriptions, H1 headings, and accidental noindex directives grouped by template.",
+  "problemId": "P2",
+  "problemStatement": "Thousands of product and collection pages share templates, so one template bug means hundreds of missing or duplicate titles, broken H1s, or accidental noindex tags.",
+  "whoUsesIt": [
+    "SEO consultants",
+    "In-house ecommerce SEO teams"
+  ],
+  "estimatedTimeLabel": "~2 min",
+  "requiredEntities": [
+    "Page"
+  ],
+  "requiredCrawlLevels": [
+    "B"
+  ],
+  "ownedRuleIds": [
+    "META-001",
+    "META-002",
+    "META-003",
+    "META-004",
+    "META-005",
+    "META-006"
+  ]
+}
+

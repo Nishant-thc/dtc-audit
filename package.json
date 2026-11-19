@@ -1,0 +1,32 @@
+{
+  "name": "silo-seo",
+  "version": "1.0.0",
+  "description": "Silo SEO — Ecommerce Marketing Intelligence Platform",
+  "type": "module",
+  "main": "src/server/index.ts",
+  "scripts": {
+    "start": "node src/server/index.ts",
+    "tool": "node src/tools/cli.ts",
+    "tool:site-atlas": "node src/tools/tool-01-site-atlas/cli.ts",
+    "test": "node --test tests/phase0.test.ts tests/server-e2e.test.ts src/tools/*/*.test.ts",
+    "test:phase0": "node --test tests/phase0.test.ts",
+    "test:phase1": "node --test src/tools/tool-01-site-atlas/tool.test.ts"
+  },
+  "keywords": [
+    "ecommerce",
+    "seo",
+    "marketing-intelligence",
+    "audit",
+    "silo-seo"
+  ],
+  "author": "The Hub Content / Silo SEO",
+  "license": "MIT",
+  "dependencies": {
+    "cheerio": "^1.2.0",
+    "playwright-core": "^1.58.2",
+    "yaml": "^2.8.3"
+  },
+  "devDependencies": {
+    "@types/node": "^25.0.0"
+  }
+}

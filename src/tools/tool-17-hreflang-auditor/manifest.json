@@ -1,0 +1,27 @@
+{
+  "toolId": "tool-17-hreflang-auditor",
+  "slug": "hreflang-auditor",
+  "number": 17,
+  "name": "Hreflang & International Auditor",
+  "navGroup": "SEO",
+  "oneLinePromise": "Audit international language/region declarations, hreflang reciprocity, and multi-currency consistency.",
+  "problemId": "P2",
+  "problemStatement": "Multi-region ecommerce stores suffer from missing lang/hreflang declarations, broken reciprocity, and mixed currencies across pages.",
+  "whoUsesIt": [
+    "International SEO consultants",
+    "Global ecommerce managers",
+    "Developers"
+  ],
+  "estimatedTimeLabel": "~2 min",
+  "requiredEntities": [
+    "Page",
+    "Product"
+  ],
+  "requiredCrawlLevels": [
+    "B"
+  ],
+  "ownedRuleIds": [
+    "INTL-001"
+  ]
+}
+

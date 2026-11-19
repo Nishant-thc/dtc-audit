@@ -1,0 +1,64 @@
+rules:
+  - ruleId: COLL-001
+    version: "1.0.0"
+    module: collection-gap-finder
+    toolId: tool-06-collection-gap-finder
+    title: Collection or category pages missing introductory editorial copy
+    category: Category optimization
+    requiredDataFields:
+      - hasIntroContent
+      - descriptionWordCount
+    detectionCondition:
+      entity: collection
+      check: collection_missing_intro_copy
+    applicablePageTypes:
+      - collection
+      - category
+    severity: 4
+    impactScore: 4
+    recommendationText: Add 40–120 words of helpful introductory or buying-guide copy to collection templates to clarify category scope and attributes.
+    supportingEvidenceTemplate: "Detected {affected} of {inspected} collection/category pages ({coveragePct}%) without introductory copy (<15 words)."
+    howDetected: Checked collection/category description containers for at least 15 words of visible copy.
+
+  - ruleId: COLL-002
+    version: "1.0.0"
+    module: collection-gap-finder
+    toolId: tool-06-collection-gap-finder
+    title: Thin collection pages displaying fewer than 3 products
+    category: Category optimization
+    requiredDataFields:
+      - productCount
+    detectionCondition:
+      entity: collection
+      check: collection_thin_product_count
+      threshold: 3
+    applicablePageTypes:
+      - collection
+      - category
+    severity: 3
+    impactScore: 3
+    recommendationText: Consolidate or merchandise under-populated collections (<3 products) so shoppers and crawlers do not land on near-empty grids.
+    supportingEvidenceTemplate: "Detected {affected} of {inspected} collection/category pages ({coveragePct}%) listing fewer than 3 products."
+    howDetected: Counted product cards and internal product links inside each collection page.
+
+  - ruleId: COLL-003
+    version: "1.0.0"
+    module: collection-gap-finder
+    toolId: tool-06-collection-gap-finder
+    title: Collection pages with weak internal inbound linking (<2 inbound links)
+    category: Internal linking
+    requiredDataFields:
+      - inboundLinkCount
+    detectionCondition:
+      entity: collection
+      check: collection_weak_inbound_links
+      threshold: 2
+    applicablePageTypes:
+      - collection
+      - category
+    severity: 3
+    impactScore: 4
+    recommendationText: Link key collections from main navigation, related category hubs, breadcrumbs, and relevant editorial guides.
+    supportingEvidenceTemplate: "Detected {affected} of {inspected} collection/category pages ({coveragePct}%) receiving fewer than 2 internal inbound links."
+    howDetected: Counted unique internal inbound links pointing to each normalized collection URL.
+

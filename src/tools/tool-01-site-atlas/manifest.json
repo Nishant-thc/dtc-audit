@@ -1,0 +1,33 @@
+{
+  "toolId": "tool-01-site-atlas",
+  "slug": "site-atlas",
+  "number": 1,
+  "name": "Site Atlas (Website Architecture Mapper)",
+  "navGroup": "Website Architecture",
+  "oneLinePromise": "Discover every public URL, sitemap declaration, status code, page type, and architecture gap across a store.",
+  "problemId": "P1",
+  "problemStatement": "Nobody knows how big or messy the site really is; sitemaps contain dead, redirected, or junk URLs while important pages are missing.",
+  "whoUsesIt": [
+    "SEO consultants",
+    "Agencies",
+    "Anyone scoping a site"
+  ],
+  "estimatedTimeLabel": "~1–2 min",
+  "requiredEntities": [
+    "Website",
+    "Crawl",
+    "Page",
+    "Sitemap",
+    "Link"
+  ],
+  "requiredCrawlLevels": [
+    "A"
+  ],
+  "ownedRuleIds": [
+    "ATLAS-001",
+    "ATLAS-002",
+    "ATLAS-003",
+    "ATLAS-004"
+  ]
+}
+

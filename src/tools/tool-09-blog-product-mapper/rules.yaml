@@ -1,0 +1,40 @@
+rules:
+  - ruleId: BLOG-001
+    version: "1.0.0"
+    module: blog-product-mapper
+    toolId: tool-09-blog-product-mapper
+    title: Blog articles with zero internal links to product pages
+    category: Content optimization
+    requiredDataFields:
+      - productLinks
+    detectionCondition:
+      entity: content
+      check: article_without_product_links
+    applicablePageTypes:
+      - blog
+    severity: 4
+    impactScore: 4
+    recommendationText: Add contextual internal links or embedded product cards from blog articles to relevant products and collections.
+    supportingEvidenceTemplate: "Detected {affected} of {inspected} editorial articles ({coveragePct}%) containing 0 links to product pages."
+    howDetected: Classified all internal outbound links from extracted blog/editorial pages by target page type.
+
+  - ruleId: BLOG-002
+    version: "1.0.0"
+    module: blog-product-mapper
+    toolId: tool-09-blog-product-mapper
+    title: Products receiving zero internal links from editorial content
+    category: Internal linking
+    requiredDataFields:
+      - productLinks
+      - normalizedUrl
+    detectionCondition:
+      entity: product
+      check: product_without_editorial_links
+    applicablePageTypes:
+      - product
+    severity: 3
+    impactScore: 3
+    recommendationText: Feature unlinked products in buying guides, comparison articles, or seasonal editorial lookbooks to strengthen internal link authority.
+    supportingEvidenceTemplate: "Detected {affected} of {inspected} catalogue products ({coveragePct}%) with 0 inbound links from blog or editorial articles."
+    howDetected: Cross-referenced all product normalized URLs against outbound product links from all extracted editorial articles.
+

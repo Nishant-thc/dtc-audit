@@ -1,0 +1,68 @@
+rules:
+  - ruleId: LINK-001
+    version: "1.0.0"
+    module: internal-link-analyzer
+    toolId: tool-08-internal-link-analyzer
+    title: Orphan pages with zero internal inbound links
+    category: Internal linking
+    requiredDataFields:
+      - inboundLinkCount
+      - status
+    detectionCondition:
+      entity: page
+      check: orphan_or_zero_inbound_page
+    applicablePageTypes:
+      - product
+      - collection
+      - category
+      - blog
+      - informational
+    severity: 4
+    impactScore: 4
+    recommendationText: Link orphaned 200 OK pages from relevant parent collections, related-product blocks, or editorial articles so crawlers and shoppers can reach them.
+    supportingEvidenceTemplate: "Detected {affected} of {inspected} interior 200 OK pages ({coveragePct}%) receiving 0 internal inbound links (template: {template})."
+    howDetected: Computed internal inbound link counts across the crawled link graph for all non-homepage 200 OK URLs.
+
+  - ruleId: LINK-002
+    version: "1.0.0"
+    module: internal-link-analyzer
+    toolId: tool-08-internal-link-analyzer
+    title: Pages buried deeper than 3 clicks from the homepage
+    category: Internal linking
+    requiredDataFields:
+      - depth
+      - status
+    detectionCondition:
+      entity: page
+      check: deep_click_depth_page
+      threshold: 3
+    applicablePageTypes:
+      - product
+      - collection
+      - category
+      - blog
+    severity: 3
+    impactScore: 3
+    recommendationText: Flatten site architecture using hub categories, breadcrumbs, and featured links so key commercial pages sit within 3 clicks of the homepage.
+    supportingEvidenceTemplate: "Detected {affected} of {inspected} 200 OK pages ({coveragePct}%) sitting at click depth > 3 from the homepage."
+    howDetected: Calculated shortest-path BFS click depth starting from the homepage (depth 0).
+
+  - ruleId: LINK-003
+    version: "1.0.0"
+    module: internal-link-analyzer
+    toolId: tool-08-internal-link-analyzer
+    title: Pages containing broken internal links (4xx/5xx targets)
+    category: Technical SEO
+    requiredDataFields:
+      - isBroken
+      - statusCode
+    detectionCondition:
+      entity: link
+      check: broken_internal_link
+    applicablePageTypes: []
+    severity: 5
+    impactScore: 4
+    recommendationText: Update or remove broken internal <a href> links pointing to 404/5xx URLs to preserve crawl efficiency and user experience.
+    supportingEvidenceTemplate: "Detected {affected} source pages across {inspected} internal link edges ({coveragePct}%) linking to broken 4xx/5xx internal destinations."
+    howDetected: Verified HTTP status codes of internal link targets across the crawled link graph.
+

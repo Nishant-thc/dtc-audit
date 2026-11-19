@@ -1,0 +1,34 @@
+{
+  "toolId": "tool-04-catalogue-scanner",
+  "slug": "catalogue-scanner",
+  "number": 4,
+  "name": "Catalogue Completeness Scanner",
+  "navGroup": "Products",
+  "oneLinePromise": "Score every product on description depth, specifications, imagery, alt text, schema, reviews, and variant completeness.",
+  "problemId": "P4",
+  "problemStatement": "Products with thin descriptions, no specs, no alt text, and no reviews hurt organic visibility and conversion, yet brands cannot see the worst offenders.",
+  "whoUsesIt": [
+    "Merchandisers",
+    "Content managers",
+    "Brand owners",
+    "Agencies"
+  ],
+  "estimatedTimeLabel": "~2–3 min",
+  "requiredEntities": [
+    "Product",
+    "Variant",
+    "Image",
+    "Schema"
+  ],
+  "requiredCrawlLevels": [
+    "B"
+  ],
+  "ownedRuleIds": [
+    "CAT-001",
+    "CAT-002",
+    "CAT-003",
+    "CAT-004",
+    "CAT-005"
+  ]
+}
+

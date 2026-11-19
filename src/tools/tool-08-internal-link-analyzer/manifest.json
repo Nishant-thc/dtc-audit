@@ -1,0 +1,29 @@
+{
+  "toolId": "tool-08-internal-link-analyzer",
+  "slug": "internal-link-analyzer",
+  "number": 8,
+  "name": "Internal Link Graph Analyzer",
+  "navGroup": "Website Architecture",
+  "oneLinePromise": "Map the internal link graph to uncover orphan pages, excessive click depth, anchor text patterns, and broken internal links.",
+  "problemId": "P8",
+  "problemStatement": "Valuable products and categories sit buried four or five clicks deep or have zero internal inbound links.",
+  "whoUsesIt": [
+    "Technical SEOs",
+    "Content strategists",
+    "Merchandising teams"
+  ],
+  "estimatedTimeLabel": "~2 min",
+  "requiredEntities": [
+    "Page",
+    "Link"
+  ],
+  "requiredCrawlLevels": [
+    "B"
+  ],
+  "ownedRuleIds": [
+    "LINK-001",
+    "LINK-002",
+    "LINK-003"
+  ]
+}
+

@@ -1,0 +1,29 @@
+{
+  "toolId": "tool-14-competitor-comparison",
+  "slug": "competitor-comparison",
+  "number": 14,
+  "name": "Competitor Comparison View",
+  "navGroup": "Opportunities",
+  "oneLinePromise": "Compare public architecture, metadata, schema, catalogue completeness, and technology metrics side by side across two domains.",
+  "problemId": "P12",
+  "problemStatement": "Agencies and brands need side-by-side public evidence comparing their store's technical and catalogue hygiene against another store.",
+  "whoUsesIt": [
+    "Agencies & pitch teams",
+    "Ecommerce SEO leads",
+    "Merchandisers"
+  ],
+  "estimatedTimeLabel": "~2 min",
+  "requiredEntities": [
+    "Crawl",
+    "Page",
+    "Product",
+    "Collection",
+    "Schema",
+    "Technology"
+  ],
+  "requiredCrawlLevels": [
+    "B"
+  ],
+  "ownedRuleIds": []
+}
+

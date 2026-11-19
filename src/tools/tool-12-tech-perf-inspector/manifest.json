@@ -1,0 +1,31 @@
+{
+  "toolId": "tool-12-tech-perf-inspector",
+  "slug": "tech-perf-inspector",
+  "number": 12,
+  "name": "Tech Stack & Performance Inspector",
+  "navGroup": "Technical",
+  "oneLinePromise": "Detect ecommerce platform, marketing integrations, third-party script bloat, image lazy-loading, caching, and runtime performance.",
+  "problemId": "P10",
+  "problemStatement": "Dozens of third-party marketing tags, uncached assets, and non-lazy-loaded images bloat pages and slow down stores.",
+  "whoUsesIt": [
+    "Developers",
+    "Technical SEOs",
+    "Agencies"
+  ],
+  "estimatedTimeLabel": "~3 min",
+  "requiredEntities": [
+    "Technology",
+    "Observation",
+    "Image",
+    "Page"
+  ],
+  "requiredCrawlLevels": [
+    "B",
+    "C"
+  ],
+  "ownedRuleIds": [
+    "PERF-001",
+    "PERF-002"
+  ]
+}
+

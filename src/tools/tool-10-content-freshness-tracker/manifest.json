@@ -1,0 +1,28 @@
+{
+  "toolId": "tool-10-content-freshness-tracker",
+  "slug": "content-freshness-tracker",
+  "number": 10,
+  "name": "Content Freshness & Completeness Tracker",
+  "navGroup": "Content",
+  "oneLinePromise": "Track publication dates, content age, word count depth, Article schema, and deterministic topic terms across editorial pages.",
+  "problemId": "P7",
+  "problemStatement": "Old articles rot with outdated advice, thin copy, and missing Article schema, losing organic visibility.",
+  "whoUsesIt": [
+    "Content managers",
+    "SEO content teams"
+  ],
+  "estimatedTimeLabel": "~2 min",
+  "requiredEntities": [
+    "Content",
+    "Schema",
+    "Page"
+  ],
+  "requiredCrawlLevels": [
+    "B"
+  ],
+  "ownedRuleIds": [
+    "FRESH-001",
+    "FRESH-002"
+  ]
+}
+

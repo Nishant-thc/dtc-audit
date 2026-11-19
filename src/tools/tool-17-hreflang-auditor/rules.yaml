@@ -1,0 +1,23 @@
+rules:
+  - ruleId: INTL-001
+    version: "1.0.0"
+    module: hreflang-auditor
+    toolId: tool-17-hreflang-auditor
+    title: Missing Content-Language / explicit regional language declaration
+    category: Technical SEO
+    requiredDataFields:
+      - responseHeaders
+      - status
+    detectionCondition:
+      entity: page
+      check: missing_international_or_currency_consistency
+    applicablePageTypes:
+      - homepage
+      - product
+      - collection
+    severity: 2
+    impactScore: 2
+    recommendationText: Declare explicit HTML lang attributes, Content-Language headers, and reciprocal <link rel="alternate" hreflang="..."> tags if targeting multiple locales.
+    supportingEvidenceTemplate: "Detected {affected} of {inspected} primary pages ({coveragePct}%) without explicit Content-Language or multi-region hreflang headers."
+    howDetected: Checked HTTP response headers, HTML lang attributes, and regional URL subfolders across crawled pages.
+

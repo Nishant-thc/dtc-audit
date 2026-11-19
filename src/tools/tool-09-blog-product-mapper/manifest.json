@@ -1,0 +1,30 @@
+{
+  "toolId": "tool-09-blog-product-mapper",
+  "slug": "blog-product-mapper",
+  "number": 9,
+  "name": "Blog-to-Product Link Mapper",
+  "navGroup": "Content",
+  "oneLinePromise": "Map how editorial articles link to products and collections, surfacing content that drives zero commercial paths.",
+  "problemId": "P7",
+  "problemStatement": "Editorial articles earn organic traffic but contain zero links to products or collections, while key products receive no editorial support.",
+  "whoUsesIt": [
+    "Content marketers",
+    "SEO content teams",
+    "Merchandisers"
+  ],
+  "estimatedTimeLabel": "~2 min",
+  "requiredEntities": [
+    "Content",
+    "Product",
+    "Collection",
+    "Link"
+  ],
+  "requiredCrawlLevels": [
+    "B"
+  ],
+  "ownedRuleIds": [
+    "BLOG-001",
+    "BLOG-002"
+  ]
+}
+

@@ -1,0 +1,14 @@
+# Dependencies
+node_modules/
+
+# Runtime SQLite crawl database & local cache
+data/
+
+# Environment variables
+.env
+.env.*
+
+# Logs & OS files
+*.log
+.DS_Store
+Thumbs.db

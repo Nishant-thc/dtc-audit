@@ -1,0 +1,41 @@
+rules:
+  - ruleId: FACET-001
+    version: "1.0.0"
+    module: faceted-nav-auditor
+    toolId: tool-07-faceted-nav-auditor
+    title: Filtered or parameterized URLs indexable without canonical control
+    category: Technical SEO
+    requiredDataFields:
+      - parameters
+      - canonicalUrl
+      - isNoindex
+      - pageType
+    detectionCondition:
+      entity: page
+      check: parameterized_url_indexable_without_canonical
+    applicablePageTypes: []
+    severity: 5
+    impactScore: 5
+    recommendationText: Point rel=canonical on filtered/sorted collection URLs to the clean base collection URL, or apply noindex/robots.txt disallow rules to multi-facet combinations.
+    supportingEvidenceTemplate: "Detected {affected} of {inspected} parameterized/filtered URLs ({coveragePct}%) that are indexable and self-canonicalized or missing canonicals."
+    howDetected: Checked all discovered URLs containing query parameters or classified as 'filtered' for indexability and canonical target.
+
+  - ruleId: FACET-002
+    version: "1.0.0"
+    module: faceted-nav-auditor
+    toolId: tool-07-faceted-nav-auditor
+    title: Filtered or parameterized URLs declared inside XML sitemaps
+    category: Technical SEO
+    requiredDataFields:
+      - parameters
+      - inSitemap
+    detectionCondition:
+      entity: page
+      check: filtered_url_in_sitemap
+    applicablePageTypes: []
+    severity: 4
+    impactScore: 4
+    recommendationText: Exclude query-parameterized filter and sort URLs from XML sitemaps unless a specific facet is an intentional indexable landing page.
+    supportingEvidenceTemplate: "Detected {affected} of {inspected} parameterized/filtered URLs ({coveragePct}%) listed inside XML sitemaps."
+    howDetected: Cross-referenced discovered parameterized/filtered URLs against XML sitemap URL declarations.
+

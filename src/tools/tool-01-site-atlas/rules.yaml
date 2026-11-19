@@ -1,0 +1,93 @@
+rules:
+  - ruleId: ATLAS-001
+    version: "1.0.0"
+    module: site-atlas
+    toolId: tool-01-site-atlas
+    title: Important indexable pages missing from XML sitemaps
+    category: Technical SEO
+    requiredDataFields:
+      - inSitemap
+      - status
+      - isNoindex
+      - pageType
+    detectionCondition:
+      entity: page
+      check: important_page_missing_from_sitemap
+    applicablePageTypes:
+      - homepage
+      - product
+      - collection
+      - category
+      - blog
+      - informational
+    severity: 4
+    impactScore: 4
+    recommendationText: Include all canonical, 200 OK commercial and editorial pages in the appropriate XML sitemap so search engines discover catalogue updates promptly.
+    supportingEvidenceTemplate: "Detected {affected} of {inspected} indexable pages ({coveragePct}%) missing from declared XML sitemaps (primary template: {template})."
+    howDetected: Compared crawled 200 OK indexable pages against all URLs declared across discovered XML sitemaps.
+
+  - ruleId: ATLAS-002
+    version: "1.0.0"
+    module: site-atlas
+    toolId: tool-01-site-atlas
+    title: Sitemap URLs returning non-200 status codes or redirects
+    category: Technical SEO
+    requiredDataFields:
+      - inSitemap
+      - status
+      - redirectChain
+    detectionCondition:
+      entity: page
+      check: sitemap_url_non_200_or_redirect
+    applicablePageTypes: []
+    severity: 5
+    impactScore: 5
+    recommendationText: Remove 4xx/5xx error URLs and update 3xx redirected URLs in XML sitemaps so only final, canonical 200 OK URLs are listed.
+    supportingEvidenceTemplate: "Detected {affected} of {inspected} sitemap-declared URLs ({coveragePct}%) returning non-200 status codes or redirecting."
+    howDetected: Checked HTTP status codes and redirect chains for every URL discovered via XML sitemaps.
+
+  - ruleId: ATLAS-003
+    version: "1.0.0"
+    module: site-atlas
+    toolId: tool-01-site-atlas
+    title: Missing or non-self-referencing canonical declarations
+    category: Technical SEO
+    requiredDataFields:
+      - canonicalUrl
+      - normalizedCanonicalUrl
+      - normalizedUrl
+    detectionCondition:
+      entity: page
+      check: inconsistent_or_missing_canonical
+    applicablePageTypes:
+      - homepage
+      - product
+      - collection
+      - category
+      - blog
+      - informational
+    severity: 4
+    impactScore: 4
+    recommendationText: Ensure every primary indexable page outputs an explicit self-referencing rel=canonical link tag matching its normalized URL.
+    supportingEvidenceTemplate: "Detected {affected} of {inspected} indexable pages ({coveragePct}%) with missing or inconsistent canonical tags (template: {template})."
+    howDetected: Compared the extracted <link rel="canonical"> normalized target against the page's normalized URL.
+
+  - ruleId: ATLAS-004
+    version: "1.0.0"
+    module: site-atlas
+    toolId: tool-01-site-atlas
+    title: Internal or sitemap URLs resolving through redirect chains
+    category: Technical SEO
+    requiredDataFields:
+      - redirectChain
+      - redirectDestination
+    detectionCondition:
+      entity: page
+      check: redirect_chain_detected
+    applicablePageTypes: []
+    severity: 3
+    impactScore: 3
+    recommendationText: Update internal links and sitemap references to point directly to the final destination URL instead of stepping through 301/302 hops.
+    supportingEvidenceTemplate: "Detected {affected} of {inspected} discovered URLs ({coveragePct}%) resolving through at least one redirect hop."
+    howDetected: Recorded HTTP 301/302/307/308 Location hops before reaching the final response.
+
