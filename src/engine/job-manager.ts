@@ -237,7 +237,7 @@ export class JobManager {
       // Seed homepage
       registerDiscoveredUrl(`${baseOrigin}/`, 'seed', 0, { inNav: true });
 
-      // STEP 1: Fetch robots.txt
+      // STEP 1: Fetch robots.txt & check optional /llms.txt
       const robotsUrl = `${baseOrigin}/robots.txt`;
       const robotsRes = await fetchQueue.fetchUrl(robotsUrl, { maxRedirects: 3, timeoutMs: 8000 });
       coverage.requested++;
@@ -245,6 +245,30 @@ export class JobManager {
       crawlRecord.robotsTxtRaw = robotsRes.status === 200 ? robotsRes.bodyText : null;
       crawlRecord.crawlDelayMs = Math.max(budget.perHostDelayMs, robotsPolicy.crawlDelayMs);
       fetchQueue.setPerHostDelay(crawlRecord.crawlDelayMs);
+
+      try {
+        const llmsRes = await fetchQueue.fetchUrl(`${baseOrigin}/llms.txt`, { maxRedirects: 2, timeoutMs: 4000 });
+        const llmsFound = llmsRes.status === 200 && Boolean(llmsRes.bodyText?.trim()) && !/<html/i.test(llmsRes.bodyText);
+        this.db.upsertObservation({
+          observationId: `${crawlId}:obs:${baseOrigin}/:performance:llms_txt_found`,
+          crawlId,
+          sourceUrl: `${baseOrigin}/llms.txt`,
+          templateId: 'sitewide',
+          pageType: 'homepage',
+          category: 'performance',
+          metric: 'llms_txt_found',
+          value: llmsFound,
+          details: { status: llmsRes.status },
+          device: 'desktop',
+          extractionMethod: 'A',
+          originalValueJson: JSON.stringify({ status: llmsRes.status }),
+          normalizedValueJson: JSON.stringify({ llmsFound }),
+          confidence: 0.99,
+          extractedAt: new Date().toISOString(),
+        });
+      } catch {
+        // ignore optional /llms.txt fetch failure
+      }
 
       // STEP 2: Sitemap & Sitemap Index Discovery (parallel child sitemap fetching)
       const sitemapQueue =

@@ -1,0 +1,40 @@
+bots:
+  - userAgent: OAI-SearchBot
+    provider: OpenAI
+    purpose: search_citation
+  - userAgent: ChatGPT-User
+    provider: OpenAI
+    purpose: user_fetch
+  - userAgent: GPTBot
+    provider: OpenAI
+    purpose: training
+  - userAgent: Claude-SearchBot
+    provider: Anthropic
+    purpose: search_citation
+  - userAgent: Claude-User
+    provider: Anthropic
+    purpose: user_fetch
+  - userAgent: ClaudeBot
+    provider: Anthropic
+    purpose: training
+  - userAgent: PerplexityBot
+    provider: Perplexity
+    purpose: search_citation
+  - userAgent: Perplexity-User
+    provider: Perplexity
+    purpose: user_fetch
+  - userAgent: Google-Extended
+    provider: Google
+    purpose: training
+  - userAgent: Applebot-Extended
+    provider: Apple
+    purpose: training
+  - userAgent: CCBot
+    provider: Common Crawl
+    purpose: training
+  - userAgent: Bytespider
+    provider: ByteDance
+    purpose: training
+  - userAgent: Meta-ExternalAgent
+    provider: Meta
+    purpose: training

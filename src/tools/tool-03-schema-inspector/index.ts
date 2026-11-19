@@ -36,6 +36,7 @@ export const tool03SchemaInspector: StandaloneToolModule = {
 
     const prodPages = pages.filter((p) => p.pageType === 'product');
     const prodUrlsWithSchema = new Set(schemas.filter((s) => s.schemaType === 'Product').map((s) => s.sourceUrl));
+    const prodPagesWithSchema = prodPages.filter((p) => prodUrlsWithSchema.has(p.sourceUrl));
     const invalidOrPartialSchemas = schemas.filter(
       (s) => !s.isValid || s.requiredFieldsMissing.length > 0 || s.recommendedFieldsMissing.length > 0
     );
@@ -138,10 +139,10 @@ export const tool03SchemaInspector: StandaloneToolModule = {
         {
           id: 'product_schema_coverage',
           label: 'Product Schema Coverage',
-          value: `${prodUrlsWithSchema.size} / ${prodPages.length}`,
+          value: `${prodPagesWithSchema.length} / ${prodPages.length}`,
           subtitle: 'Product pages with @type Product',
           affectedUrls: prodPages.filter((p) => !prodUrlsWithSchema.has(p.sourceUrl)).map((p) => p.sourceUrl),
-          status: prodUrlsWithSchema.size === prodPages.length ? 'good' : 'critical',
+          status: prodPagesWithSchema.length === prodPages.length ? 'good' : 'critical',
         },
         {
           id: 'invalid_or_partial_schemas',

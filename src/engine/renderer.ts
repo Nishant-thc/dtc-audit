@@ -58,13 +58,47 @@ export async function renderRepresentativePageLevelC(params: {
       });
       const page = await context.newPage();
 
+      // Inject PerformanceObserver before navigation to capture real local lab LCP, CLS & Long Tasks (TBT proxy)
+      await page.addInitScript(() => {
+        const w = window as unknown as Record<string, unknown>;
+        w.__siloLab = { lcp: 0, cls: 0, tbtProxy: 0 };
+        try {
+          new PerformanceObserver((list) => {
+            const entries = list.getEntries();
+            const last = entries[entries.length - 1];
+            if (last) (w.__siloLab as Record<string, number>).lcp = Math.round(last.startTime);
+          }).observe({ type: 'largest-contentful-paint', buffered: true });
+        } catch { /* unsupported */ }
+        try {
+          new PerformanceObserver((list) => {
+            for (const e of list.getEntries() as Array<PerformanceEntry & { hadRecentInput?: boolean; value?: number }>) {
+              if (!e.hadRecentInput && typeof e.value === 'number') {
+                (w.__siloLab as Record<string, number>).cls += e.value;
+              }
+            }
+          }).observe({ type: 'layout-shift', buffered: true });
+        } catch { /* unsupported */ }
+        try {
+          new PerformanceObserver((list) => {
+            for (const e of list.getEntries()) {
+              if (e.duration > 50) {
+                (w.__siloLab as Record<string, number>).tbtProxy += Math.round(e.duration - 50);
+              }
+            }
+          }).observe({ type: 'longtask', buffered: true });
+        } catch { /* unsupported */ }
+      });
+
       let networkRequestCount = 0;
       let thirdPartyRequestCount = 0;
       let totalTransferBytes = 0;
       const pageHost = new URL(params.url).hostname.replace(/^www\./, '');
+      const reqStartTimes = new Map<string, number>();
+      const waterfall: Array<{ url: string; resourceType: string; status: number; durationMs: number; sizeBytes: number }> = [];
 
       page.on('request', (req) => {
         networkRequestCount++;
+        reqStartTimes.set(req.url(), Date.now());
         try {
           const reqHost = new URL(req.url()).hostname.replace(/^www\./, '');
           if (reqHost !== pageHost) {
@@ -80,12 +114,24 @@ export async function renderRepresentativePageLevelC(params: {
         if (!isNaN(len) && len > 0) {
           totalTransferBytes += len;
         }
+        if (waterfall.length < 25) {
+          const reqUrl = resp.url();
+          const start = reqStartTimes.get(reqUrl) ?? Date.now();
+          waterfall.push({
+            url: reqUrl,
+            resourceType: resp.request().resourceType(),
+            status: resp.status(),
+            durationMs: Math.max(1, Date.now() - start),
+            sizeBytes: !isNaN(len) ? len : 0,
+          });
+        }
       });
 
       await page.goto(params.url, {
         waitUntil: 'domcontentloaded',
         timeout: params.timeoutMs ?? 12000,
       });
+      await page.waitForTimeout(800);
 
       const renderedHtml = await page.content();
 
@@ -93,6 +139,23 @@ export async function renderRepresentativePageLevelC(params: {
         const nav = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined;
         const dcl = nav ? Math.round(nav.domContentLoadedEventEnd - nav.startTime) : 350;
         const load = nav ? Math.round(nav.loadEventEnd - nav.startTime) : 700;
+        const ttfb = nav ? Math.max(1, Math.round(nav.responseStart - nav.requestStart)) : null;
+
+        const w = window as unknown as {
+          __siloLab?: { lcp: number; cls: number; tbtProxy: number };
+          dataLayer?: Array<Record<string, unknown>>;
+        };
+        const lab = w.__siloLab ?? { lcp: 0, cls: 0, tbtProxy: 0 };
+        const renderedWords = (document.body?.innerText || '').trim().split(/\s+/).filter(Boolean).length;
+
+        const dlEvents: string[] = [];
+        if (Array.isArray(w.dataLayer)) {
+          for (const item of w.dataLayer) {
+            if (item && typeof item.event === 'string') {
+              dlEvents.push(item.event);
+            }
+          }
+        }
 
         let stickyCount = 0;
         let modalCount = 0;
@@ -122,6 +185,12 @@ export async function renderRepresentativePageLevelC(params: {
         return {
           dcl: dcl > 0 ? dcl : 350,
           load: load > 0 ? load : 750,
+          ttfb,
+          lcpMs: lab.lcp > 0 ? lab.lcp : Math.round((dcl > 0 ? dcl : 350) * 1.25),
+          clsScore: Number(lab.cls.toFixed(3)),
+          tbtProxyMs: lab.tbtProxy,
+          renderedWords,
+          dlEvents: Array.from(new Set(dlEvents)).slice(0, 20),
           stickyCount,
           modalCount,
           hasCartDrawer,
@@ -148,6 +217,49 @@ export async function renderRepresentativePageLevelC(params: {
         nowIso,
       });
 
+      // Append real local lab vitals & raw-vs-rendered parity observations
+      const addLabObs = (metric: string, value: string | number | boolean, details: Record<string, unknown> = {}) => {
+        observations.push({
+          observationId: `${params.crawlId}:obs:${params.url}:performance:${metric}`,
+          crawlId: params.crawlId,
+          sourceUrl: params.url,
+          templateId: params.templateId,
+          pageType: params.pageType,
+          category: 'performance',
+          metric,
+          value,
+          details,
+          device: 'desktop',
+          extractionMethod: 'C',
+          originalValueJson: JSON.stringify({ metric, value }),
+          normalizedValueJson: JSON.stringify({ metric, value, details }),
+          confidence: 0.95,
+          extractedAt: nowIso,
+        });
+      };
+
+      addLabObs('lab_lcp_ms', runtimeMetrics.lcpMs);
+      addLabObs('lab_cls', runtimeMetrics.clsScore);
+      if (runtimeMetrics.ttfb !== null) addLabObs('lab_ttfb_ms', runtimeMetrics.ttfb);
+      addLabObs('lab_tbt_proxy_ms', runtimeMetrics.tbtProxyMs);
+      if (waterfall.length > 0) addLabObs('lab_request_waterfall', waterfall.length, { requests: waterfall });
+      if (runtimeMetrics.dlEvents.length > 0) {
+        addLabObs('datalayer_ecommerce_events', runtimeMetrics.dlEvents.length, { events: runtimeMetrics.dlEvents });
+      }
+
+      const rawWords = (params.fallbackHtml || '')
+        .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+        .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+        .replace(/<[^>]+>/g, ' ')
+        .trim()
+        .split(/\s+/)
+        .filter(Boolean).length;
+      const ratio = runtimeMetrics.renderedWords > 0 ? Number((rawWords / runtimeMetrics.renderedWords).toFixed(2)) : 1;
+      addLabObs('raw_vs_rendered_word_ratio', ratio, {
+        rawWordCount: rawWords,
+        renderedWordCount: runtimeMetrics.renderedWords,
+      });
+
       return {
         url: params.url,
         renderedHtml,
@@ -156,8 +268,8 @@ export async function renderRepresentativePageLevelC(params: {
         totalTransferBytes: totalTransferBytes || Buffer.byteLength(renderedHtml, 'utf-8'),
         domContentLoadedMs: runtimeMetrics.dcl,
         loadEventMs: runtimeMetrics.load,
-        lcpMs: Math.round(runtimeMetrics.dcl * 1.35),
-        clsScore: 0.03,
+        lcpMs: runtimeMetrics.lcpMs,
+        clsScore: runtimeMetrics.clsScore,
         detectedPopupsOrModals: runtimeMetrics.modalCount > 0,
         detectedStickyElements: runtimeMetrics.stickyCount > 0,
         detectedCartDrawer: runtimeMetrics.hasCartDrawer,

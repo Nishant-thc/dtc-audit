@@ -417,9 +417,14 @@ export class RulesEngine {
 
         // --- TOOL 11: CONVERSION ELEMENT AUDITOR ---
         case 'missing_trust_or_delivery_signals': {
+          const allowedTypes =
+            rule.applicablePageTypes.length > 0
+              ? new Set(rule.applicablePageTypes)
+              : new Set(['product', 'collection', 'category', 'landing', 'homepage']);
           const prodObs = observations.filter(
             (o) =>
               o.category === 'conversion' &&
+              allowedTypes.has(o.pageType) &&
               (o.metric === 'has_trust_signals' || o.metric === 'has_delivery_or_returns_info')
           );
           const urlsChecked = Array.from(new Set(prodObs.map((o) => o.sourceUrl)));

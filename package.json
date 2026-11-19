@@ -8,7 +8,7 @@
     "start": "node src/server/index.ts",
     "tool": "node src/tools/cli.ts",
     "tool:site-atlas": "node src/tools/tool-01-site-atlas/cli.ts",
-    "test": "node --test tests/phase0.test.ts tests/server-e2e.test.ts src/tools/*/*.test.ts",
+    "test": "node --test tests/phase0.test.ts tests/store-verdict.test.ts tests/server-e2e.test.ts src/tools/*/*.test.ts",
     "test:phase0": "node --test tests/phase0.test.ts",
     "test:phase1": "node --test src/tools/tool-01-site-atlas/tool.test.ts"
   },

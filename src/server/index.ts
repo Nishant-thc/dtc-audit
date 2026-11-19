@@ -10,6 +10,8 @@ import {
   renderStandaloneToolPage,
   renderCoverageOverviewPage,
 } from '../ui/templates.ts';
+import { renderStoreFirstHomePage } from '../ui/verdict-page.ts';
+import { computeStoreVerdict } from '../engine/store-audit.ts';
 
 export function createAppServer(db = new SharedDatabase(), customFetcher?: CustomFetcher) {
   const jobManager = new JobManager(db, customFetcher);
@@ -22,7 +24,56 @@ export function createAppServer(db = new SharedDatabase(), customFetcher?: Custo
       if (req.method === 'GET' && pathname === '/') {
         const crawls = db.listCrawls();
         res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+        res.end(renderStoreFirstHomePage(crawls));
+        return;
+      }
+
+      if (req.method === 'GET' && pathname === '/tools') {
+        const crawls = db.listCrawls();
+        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
         res.end(renderHomePage(crawls));
+        return;
+      }
+
+      if (req.method === 'POST' && pathname === '/api/audit/run') {
+        const bodyStr = await readRequestBody(req);
+        const body = bodyStr ? JSON.parse(bodyStr) : {};
+        let crawl = body.crawlId ? db.getCrawl(String(body.crawlId)) : null;
+
+        if (!crawl) {
+          const domainInput = String(body.domainInput ?? '').trim();
+          if (!domainInput) {
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'Please enter a valid public domain or URL.' }));
+            return;
+          }
+          const reqLevel = (body.maxLevel === 'A' || body.maxLevel === 'C' ? body.maxLevel : 'B') as 'A' | 'B' | 'C';
+          const ensured = await jobManager.ensureCrawl({
+            domainInput,
+            requiredLevel: reqLevel,
+            forceRecrawl: Boolean(body.forceRecrawl),
+            budget: { maxLevel: reqLevel, ...(body.budget ?? {}) },
+          });
+          crawl = ensured.crawl;
+        }
+
+        const verdict = computeStoreVerdict(db, crawl);
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(verdict));
+        return;
+      }
+
+      if (req.method === 'GET' && pathname === '/api/audit/verdict') {
+        const crawlId = reqUrl.searchParams.get('crawlId') ?? '';
+        const crawl = db.getCrawl(crawlId) ?? db.listCrawls()[0] ?? null;
+        if (!crawl) {
+          res.writeHead(404, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Crawl not found' }));
+          return;
+        }
+        const verdict = computeStoreVerdict(db, crawl);
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(verdict));
         return;
       }
 

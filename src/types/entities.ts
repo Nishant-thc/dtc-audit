@@ -468,3 +468,212 @@ export interface ToolManifest {
   ownedRuleIds: string[];
 }
 
+// =========================================================================
+// STORE-FIRST VERDICT, SHARED DENOMINATORS & ALL-RULE RESULT MODEL
+// =========================================================================
+
+export type StoreAreaId =
+  | 'search_visibility'
+  | 'ai_readiness'
+  | 'product_collection_quality'
+  | 'site_health_speed'
+  | 'conversion_trust';
+
+export type RuleEvaluationStatus = 'pass' | 'fail' | 'not_applicable' | 'not_measured';
+export type FindingKind = 'issue' | 'opportunity' | 'fact';
+export type ActionTier = 'fix_now' | 'fix_soon' | 'nice_to_have';
+export type ConfidenceTag = 'verified' | 'sampled' | 'small_sample' | 'not_measured';
+export type HealthBand = 'green' | 'amber' | 'red' | 'unmeasured';
+
+export interface CrawlDenominators {
+  crawlId: string;
+  discoveredUrls: number;
+  htmlInspectedPages: number;
+  okHtmlPages: number;
+  deepInspectedPages: number;
+  byPageTypeDiscovered: Record<PageType, number>;
+  byPageTypeHtml: Record<PageType, number>;
+  entities: {
+    products: number;
+    collections: number;
+    contents: number;
+    images: number;
+    schemas: number;
+    internalLinks: number;
+    sitemaps: number;
+  };
+}
+
+export interface RuleResultRecord {
+  ruleId: string;
+  toolId: string;
+  areaId: StoreAreaId;
+  title: string;
+  plainTitle: string;
+  kind: FindingKind;
+  status: RuleEvaluationStatus;
+  actionTier: ActionTier;
+  weight: number;
+  effortMinutes: number;
+  owner: 'Merchandising / Content Team' | 'Theme / Web Developer' | 'SEO / Marketing Manager';
+  applicableCount: number;
+  affectedCount: number;
+  passedCount: number;
+  passRate: number; // 0..1
+  denominatorNoun: string;
+  confidenceTag: ConfidenceTag;
+  notMeasuredReason?: string;
+  affectedUrls: string[];
+  templateGroupCounts: Record<string, { affected: number; total: number }>;
+  finding: FindingRecord | null;
+}
+
+export interface FixPacketBeforeAfter {
+  currentLabel: string;
+  currentValue: string;
+  suggestedLabel: string;
+  suggestedValue: string;
+  sourceUrl?: string;
+}
+
+export interface FixPacket {
+  taskId: string;
+  areaId: StoreAreaId;
+  areaLabel: string;
+  templateGroup: string;
+  templatePageCount: number;
+  owner: 'Merchandising / Content Team' | 'Theme / Web Developer' | 'SEO / Marketing Manager';
+  effortMinutes: number;
+  effortLabel: string;
+  actionTier: ActionTier;
+  title: string;
+  proofLine: string;
+  projectedScoreLift: number;
+  valuePerEffort: number;
+  confidenceTag: ConfidenceTag;
+  ruleIds: string[];
+  affectedCount: number;
+  applicableCount: number;
+  denominatorNoun: string;
+  affectedUrls: string[];
+  beforeAfter: FixPacketBeforeAfter[];
+  platformSteps: string[];
+  ticketMarkdown: string;
+}
+
+export interface AreaScoreSummary {
+  areaId: StoreAreaId;
+  label: string;
+  shortLabel: string;
+  description: string;
+  score: number | null;
+  grade: 'A' | 'B' | 'C' | 'D' | 'F' | '—';
+  band: HealthBand;
+  passedCount: number;
+  failedCount: number;
+  notMeasuredCount: number;
+  notApplicableCount: number;
+  opportunitiesCount: number;
+  ruleResults: RuleResultRecord[];
+}
+
+export interface AiBotAccessEntry {
+  userAgent: string;
+  provider: string;
+  purpose: 'training' | 'search_citation' | 'user_fetch';
+  robotsStatus: 'allowed' | 'disallowed' | 'no_rule';
+  serverFetchStatus: 'allowed' | 'blocked_403' | 'challenge' | 'not_tested';
+}
+
+export interface AiReadinessSummary {
+  robotsFound: boolean;
+  llmsTxtFound: boolean;
+  llmsTxtUrl: string | null;
+  bots: AiBotAccessEntry[];
+  rawVsRenderedParity: {
+    status: 'verified' | 'js_dependent_gap' | 'not_measured';
+    summary: string;
+    sampleUrl: string | null;
+    rawWordCount: number | null;
+    renderedWordCount: number | null;
+    priceInRawHtml: boolean | null;
+  };
+  answerableFacts: {
+    hasShippingReturnsLink: boolean;
+    hasAboutLink: boolean;
+    hasFaqContent: boolean;
+    productSpecsInPlainTextPct: number;
+  };
+  entityConsistency: {
+    orgBrandName: string | null;
+    productBrandNames: string[];
+    brandsAgree: boolean | null;
+    sameAsCount: number;
+  };
+}
+
+export interface LocalSpeedSummary {
+  measurementMode: 'lab_browser' | 'static_only';
+  disclaimer: string;
+  staticMetrics: {
+    avgHtmlKb: number;
+    maxHtmlKb: number;
+    avgExternalScripts: number;
+    avgThirdPartyScripts: number;
+    thirdPartyDomains: string[];
+    renderBlockingCssAvg: number;
+    imagesMissingDimensionsPct: number;
+    duplicateTrackingTags: string[];
+  };
+  browserVitals: {
+    measured: boolean;
+    sampleCount: number;
+    lcpMs: number | null;
+    lcpThresholdMs: 2500;
+    cls: number | null;
+    clsThreshold: 0.1;
+    ttfbMs: number | null;
+    tbtProxyMs: number | null;
+    dataLayerEcommerceEvents: string[];
+    waterfallSample: Array<{
+      url: string;
+      resourceType: string;
+      status: number;
+      durationMs: number;
+      sizeBytes: number;
+    }>;
+  };
+}
+
+export interface StoreSnapshotFact {
+  id: string;
+  label: string;
+  value: string;
+  detail?: string;
+}
+
+export interface StoreVerdictReport {
+  crawl: CrawlRecord;
+  denominators: CrawlDenominators;
+  overallScore: number | null;
+  overallGrade: 'A' | 'B' | 'C' | 'D' | 'F' | '—';
+  overallBand: HealthBand;
+  verdictSentence: string;
+  areas: AreaScoreSummary[];
+  fixFirst: FixPacket[];
+  allTasks: FixPacket[];
+  opportunities: RuleResultRecord[];
+  storeSnapshot: StoreSnapshotFact[];
+  totals: {
+    passedChecks: number;
+    failedIssues: number;
+    opportunitiesCount: number;
+    notMeasuredChecks: number;
+    notApplicableChecks: number;
+  };
+  aiReadiness: AiReadinessSummary;
+  localSpeed: LocalSpeedSummary;
+  generatedAt: string;
+}
+
+
