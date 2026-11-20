@@ -1,10 +1,23 @@
-/* Silo SEO — Store-First Verdict Client (pure browser JS) */
+/* Silo SEO — Working SEO Table & Visual Summary Client (pure browser JS) */
 (function () {
   'use strict';
 
   const ALL_TOOLS = window.__SILO_VERDICT_TOOLS__ || [];
-  let activeVerdict = null;
-  let activeAreaId = null;
+  let activeReport = null;
+
+  // Filter & UI state
+  const ui = {
+    sev: 'all',
+    area: 'all',
+    where: 'all',
+    owner: 'all',
+    q: '',
+    sort: 'severity',
+    pageTab: 'all',
+    pageQ: '',
+    expandedRows: {},
+    showAllUrls: {},
+  };
 
   function esc(s) {
     return String(s == null ? '' : s)
@@ -14,253 +27,474 @@
       .replace(/"/g, '&quot;');
   }
 
-  function doneKey(domain, taskId) {
-    return 'silo_done_' + domain + '_' + taskId;
+  function shortPath(u) {
+    try {
+      const x = new URL(u);
+      const p = (x.pathname || '/') + (x.search || '');
+      return p.length > 48 ? p.slice(0, 45) + '…' : p;
+    } catch (e) {
+      return String(u || '');
+    }
   }
 
-  function isDone(domain, taskId) {
-    return localStorage.getItem(doneKey(domain, taskId)) === '1';
+  function fixedKey(domain, rowId) {
+    return 'silo_fixed_' + domain + '_' + rowId;
   }
 
-  window.setViewMode = function (mode) {
-    document.body.classList.toggle('specialist-mode', mode === 'specialist');
-    const ownerBtn = document.getElementById('btn-owner-view');
-    const specBtn = document.getElementById('btn-specialist-view');
-    if (ownerBtn) ownerBtn.classList.toggle('on', mode === 'owner');
-    if (specBtn) specBtn.classList.toggle('on', mode === 'specialist');
-    const ev = document.getElementById('layer-3-evidence');
-    if (ev) ev.open = mode === 'specialist';
-  };
+  function isFixed(domain, rowId) {
+    return localStorage.getItem(fixedKey(domain, rowId)) === '1';
+  }
 
-  window.toggleDone = function (taskId) {
-    if (!activeVerdict) return;
-    const k = doneKey(activeVerdict.crawl.domain, taskId);
-    localStorage.setItem(k, isDone(activeVerdict.crawl.domain, taskId) ? '0' : '1');
-    renderFixPackets(activeVerdict);
-  };
+  function bandColor(score) {
+    if (score == null) return 'var(--ink-faint)';
+    if (score >= 90) return 'var(--good)';
+    if (score >= 50) return 'var(--warn)';
+    return 'var(--block)';
+  }
 
-  window.togglePacketDrawer = function (taskId, panel) {
-    const el = document.getElementById('drawer-' + panel + '-' + taskId);
-    if (el) el.classList.toggle('open');
-  };
+  function sevDot(sev) {
+    if (sev === 'critical') return '<span class="sev-badge critical">● Critical</span>';
+    if (sev === 'warning') return '<span class="sev-badge warning">● Warning</span>';
+    return '<span class="sev-badge minor">● Minor</span>';
+  }
 
-  window.copyTicket = function (taskId) {
-    if (!activeVerdict) return;
-    const t = activeVerdict.allTasks.find(function (x) {
-      return x.taskId === taskId;
+  function pageStatusBadge(st) {
+    if (st === 'broken') return '<span class="sev-badge critical">● Broken</span>';
+    if (st === 'needs_work') return '<span class="sev-badge warning">● Needs work</span>';
+    return '<span class="sev-badge good">● Good</span>';
+  }
+
+  function heatColor(pct) {
+    if (pct === null || pct === 0) return 'background:#E8F8EF;color:#0D7A3E;';
+    if (pct >= 60) return 'background:#FBEAE8;color:#A6342A;font-weight:600;';
+    if (pct >= 25) return 'background:#FBF1DD;color:#A9720C;font-weight:600;';
+    return 'background:#F3F4F7;color:#565E6D;';
+  }
+
+  /* ---------------- Top Header + 4 Visual Charts ---------------- */
+  function renderHeaderAndVisuals(v) {
+    const d = v.denominators;
+    const vs = v.visualSummary;
+    const scannedAt = new Date(v.generatedAt).toLocaleString(undefined, {
+      day: '2-digit',
+      month: 'short',
+      hour: '2-digit',
+      minute: '2-digit',
     });
-    if (!t) return;
-    navigator.clipboard.writeText(t.ticketMarkdown).then(function () {
-      const btn = document.getElementById('copy-btn-' + taskId);
-      if (btn) {
-        btn.textContent = '✓ Copied task';
-        setTimeout(function () {
-          btn.textContent = 'Copy as task';
-        }, 1500);
-      }
-    });
-  };
 
-  window.openComparePrompt = function () {
-    if (!activeVerdict) return;
-    window.location.href =
-      '/tools/competitor-comparison?crawlId=' +
-      encodeURIComponent(activeVerdict.crawl.crawlId) +
-      '&autoScan=true';
-  };
-
-  window.selectArea = function (areaId) {
-    activeAreaId = areaId;
-    document.querySelectorAll('.area-tile').forEach(function (el) {
-      el.classList.toggle('active', el.getAttribute('data-area') === areaId);
-    });
-    if (activeVerdict) renderAreaDetail(activeVerdict, areaId);
-  };
-
-  function renderVerdict(v) {
-    activeVerdict = v;
-    document.getElementById('pre-scan-section').style.display = 'none';
-    document.getElementById('verdict-workspace').style.display = 'block';
-    document.getElementById('verdict-history-link').href =
-      '/tools/change-tracker?crawlId=' + encodeURIComponent(v.crawl.crawlId) + '&autoScan=true';
-    document.getElementById('verdict-pdf-link').href =
-      '/api/tools/opportunity-dashboard/export/report?crawlId=' + encodeURIComponent(v.crawl.crawlId);
-
-    // Layer 0
-    document.getElementById('layer-0-verdict').innerHTML =
-      '<div class="verdict-top">' +
-        '<div>' +
-          '<div class="verdict-domain">' + esc(v.crawl.domain) + '</div>' +
-          '<div class="verdict-sentence">' + esc(v.verdictSentence) + '</div>' +
-        '</div>' +
-        '<div class="score-pill-big">' +
-          '<div class="score-circle ' + v.overallBand + '"><div class="num">' + (v.overallScore != null ? v.overallScore : '—') + '</div><div class="grd">Grade ' + esc(v.overallGrade) + '</div></div>' +
-          '<div><div style="font-weight:600;font-size:14px;">Store Health</div><div style="font-size:12px;color:var(--ink-soft);">Weighted pass rate (0–100)</div>' +
-          '<div style="font-size:11.5px;color:var(--ink-faint);margin-top:4px;">Passed: ' + v.totals.passedChecks + ' · Issues: ' + v.totals.failedIssues + ' · Not measured: ' + v.totals.notMeasuredChecks + '</div></div>' +
-        '</div>' +
+    // 1. One-line Header Strip
+    document.getElementById('sec-header-strip').innerHTML =
+      '<div class="hdr-left">' +
+        '<strong class="hdr-domain">' + esc(v.crawl.domain) + '</strong>' +
+        '<span class="hdr-score ' + v.overallBand + '">Store health ' + (v.overallScore != null ? v.overallScore + ' (' + v.overallGrade + ')' : '—') + '</span>' +
+        '<span class="hdr-meta">' + d.okHtmlPages + ' pages checked of ' + d.discoveredUrls.toLocaleString() + ' found · ' + esc(scannedAt) + '</span>' +
       '</div>' +
-      '<div class="area-grid">' +
-        v.areas.map(function (a) {
-          return (
-            '<button type="button" class="area-tile" data-area="' + a.areaId + '" onclick="selectArea(\'' + a.areaId + '\')">' +
-              '<div class="al">' + esc(a.label) + '</div>' +
-              '<div class="as ' + a.band + '">' + (a.score !== null ? a.score + ' <span style="font-size:14px;">(' + a.grade + ')</span>' : 'Not measured') + '</div>' +
-              '<div class="am">' + a.passedCount + ' passed · ' + a.failedCount + ' issues' + (a.notMeasuredCount ? ' · ' + a.notMeasuredCount + ' unmeasured' : '') + '</div>' +
-            '</button>'
-          );
-        }).join('') +
+      '<div class="hdr-actions">' +
+        '<button type="button" class="btn" onclick="rescanCurrent(\'C\')">Run deep scan</button>' +
+        '<button type="button" class="btn" onclick="exportIssuesCsv()">Export CSV</button>' +
+        '<a class="btn btn-primary" href="/api/tools/opportunity-dashboard/export/report?crawlId=' + encodeURIComponent(v.crawl.crawlId) + '" target="_blank">Client PDF</a>' +
       '</div>';
 
-    renderFixPackets(v);
+    // 2. Four Visual Charts
+    const areaBars = v.areas.map(function (a) {
+      const s = a.score;
+      const pct = s != null ? s : 0;
+      return (
+        '<div class="vbar-row" onclick="filterByArea(\'' + a.areaId + '\')" title="Click to filter issues by ' + esc(a.label) + '">' +
+          '<div class="vbar-lbl">' + esc(a.shortLabel) + '</div>' +
+          '<div class="vbar-track"><div class="vbar-fill" style="width:' + Math.max(2, pct) + '%;background:' + bandColor(s) + '"></div></div>' +
+          '<div class="vbar-val">' + (s != null ? s : '—') + '</div>' +
+        '</div>'
+      );
+    }).join('');
 
-    // Default Layer 2 to weakest area
-    const weakest = v.areas.slice().sort(function (a, b) {
-      return (a.score != null ? a.score : 101) - (b.score != null ? b.score : 101);
-    })[0];
-    if (weakest) window.selectArea(weakest.areaId);
+    const pageBars = (vs.pageHealthByType || []).map(function (p) {
+      const t = Math.max(1, p.total);
+      const gW = (p.good / t) * 100;
+      const wW = (p.needsWork / t) * 100;
+      const bW = (p.broken / t) * 100;
+      return (
+        '<div class="vbar-row" onclick="filterByWhere(\'' + p.pageType + '\')" title="Good: ' + p.good + ', Needs work: ' + p.needsWork + ', Broken: ' + p.broken + '">' +
+          '<div class="vbar-lbl">' + esc(p.label.replace(/ pages$/, '')) + '</div>' +
+          '<div class="stack-track">' +
+            (p.good ? '<div style="width:' + gW + '%;background:var(--good)"></div>' : '') +
+            (p.needsWork ? '<div style="width:' + wW + '%;background:var(--warn)"></div>' : '') +
+            (p.broken ? '<div style="width:' + bW + '%;background:var(--block)"></div>' : '') +
+          '</div>' +
+          '<div class="vbar-val">' + p.good + '/' + p.total + '</div>' +
+        '</div>'
+      );
+    }).join('');
 
-    // Opportunities & Store Snapshot Facts
-    document.getElementById('layer-opportunities-facts').innerHTML =
-      '<div class="panel" style="margin-bottom:16px;"><div class="panel-head"><h3>Store snapshot (neutral facts)</h3><span class="verified">Observed from public pages · not scored as defects</span></div>' +
-      '<div class="panel-body"><div class="snapshot-strip">' +
+    const sc = vs.severityCounts;
+    const sevTiles =
+      '<div class="sev-tiles">' +
+        '<button type="button" class="sev-tile critical ' + (ui.sev === 'critical' ? 'on' : '') + '" onclick="toggleSevFilter(\'critical\')"><div class="n">' + sc.critical + '</div><div class="l">Critical</div></button>' +
+        '<button type="button" class="sev-tile warning ' + (ui.sev === 'warning' ? 'on' : '') + '" onclick="toggleSevFilter(\'warning\')"><div class="n">' + sc.warning + '</div><div class="l">Warning</div></button>' +
+        '<button type="button" class="sev-tile minor ' + (ui.sev === 'minor' ? 'on' : '') + '" onclick="toggleSevFilter(\'minor\')"><div class="n">' + sc.minor + '</div><div class="l">Minor</div></button>' +
+      '</div>' +
+      '<div class="chart-hint">Click a severity tile to filter the issues table below.</div>';
+
+    const hm = vs.heatmap;
+    const hmTable =
+      '<table class="hm-table"><thead><tr><th></th>' +
+      hm.pageTypes.map(function (pt) { return '<th>' + esc(pt.label) + '</th>'; }).join('') +
+      '</tr></thead><tbody>' +
+      hm.rows.map(function (r) {
+        return '<tr><td class="hm-row-lbl">' + esc(r.areaLabel) + '</td>' +
+          r.cells.map(function (c) {
+            return '<td style="' + heatColor(c.affectedPct) + '" onclick="filterAreaAndWhere(\'' + r.areaId + '\',\'' + c.pageType + '\')" title="' + c.affected + ' of ' + c.checked + ' pages">' +
+              (c.affectedPct ? c.affectedPct + '%' : '0%') + '</td>';
+          }).join('') + '</tr>';
+      }).join('') +
+      '</tbody></table>';
+
+    document.getElementById('sec-visual-summary').innerHTML =
+      '<div class="viz-grid">' +
+        '<div class="viz-card"><div class="viz-title">' + esc(vs.areaChartTitle) + '</div><div class="viz-sub">Score by area (0–100)</div>' + areaBars + '</div>' +
+        '<div class="viz-card"><div class="viz-title">' + esc(vs.pageHealthChartTitle) + '</div><div class="viz-sub">Page health (Good / Needs work / Broken)</div>' + pageBars + '</div>' +
+        '<div class="viz-card"><div class="viz-title">' + sc.critical + ' critical, ' + sc.warning + ' warnings, ' + sc.minor + ' minor</div><div class="viz-sub">Issues by severity</div>' + sevTiles + '</div>' +
+        '<div class="viz-card"><div class="viz-title">Where issues sit</div><div class="viz-sub">% of checked pages affected by area &amp; page type</div>' + hmTable + '</div>' +
+      '</div>' +
+      '<div class="cov-line">' + esc(vs.coverageLine) + '</div>';
+  }
+
+  /* ---------------- Core Issues Table ---------------- */
+  function getFilteredIssues() {
+    if (!activeReport) return [];
+    let rows = (activeReport.issueRows || []).slice();
+    if (ui.sev !== 'all') rows = rows.filter(function (r) { return r.severity === ui.sev; });
+    if (ui.area !== 'all') rows = rows.filter(function (r) { return r.areaId === ui.area; });
+    if (ui.where !== 'all') rows = rows.filter(function (r) { return r.pageType === ui.where; });
+    if (ui.owner !== 'all') rows = rows.filter(function (r) { return r.owner === ui.owner; });
+    if (ui.q) {
+      const q = ui.q.toLowerCase();
+      rows = rows.filter(function (r) {
+        return (r.issue + ' ' + r.whereLabel + ' ' + r.action + ' ' + r.ruleId + ' ' + (r.exampleUrl || '')).toLowerCase().indexOf(q) !== -1;
+      });
+    }
+    const sevOrder = { critical: 3, warning: 2, minor: 1 };
+    if (ui.sort === 'pages') {
+      rows.sort(function (a, b) { return b.affectedCount - a.affectedCount; });
+    } else if (ui.sort === 'area') {
+      rows.sort(function (a, b) { return a.areaLabel.localeCompare(b.areaLabel) || sevOrder[b.severity] - sevOrder[a.severity]; });
+    } else {
+      rows.sort(function (a, b) { return sevOrder[b.severity] - sevOrder[a.severity] || b.affectedCount - a.affectedCount; });
+    }
+    return rows;
+  }
+
+  function renderIssuesTable() {
+    const v = activeReport;
+    if (!v) return;
+    const allRows = v.issueRows || [];
+    const filtered = getFilteredIssues();
+
+    const uniqueAreas = [];
+    const uniqueWheres = [];
+    const uniqueOwners = [];
+    allRows.forEach(function (r) {
+      if (!uniqueAreas.some(function (x) { return x.id === r.areaId; })) uniqueAreas.push({ id: r.areaId, lbl: r.areaLabel });
+      if (!uniqueWheres.some(function (x) { return x.id === r.pageType; })) uniqueWheres.push({ id: r.pageType, lbl: r.whereLabel });
+      if (uniqueOwners.indexOf(r.owner) === -1) uniqueOwners.push(r.owner);
+    });
+
+    const controls =
+      '<div class="tbl-bar">' +
+        '<div><h2 class="tbl-h2">' + filtered.length + ' issue' + (filtered.length === 1 ? '' : 's') + ' found</h2></div>' +
+        '<div class="tbl-filters">' +
+          '<select onchange="setIssueFilter(\'sev\', this.value)">' +
+            '<option value="all"' + (ui.sev === 'all' ? ' selected' : '') + '>All severities</option>' +
+            '<option value="critical"' + (ui.sev === 'critical' ? ' selected' : '') + '>Critical</option>' +
+            '<option value="warning"' + (ui.sev === 'warning' ? ' selected' : '') + '>Warning</option>' +
+            '<option value="minor"' + (ui.sev === 'minor' ? ' selected' : '') + '>Minor</option>' +
+          '</select>' +
+          '<select onchange="setIssueFilter(\'area\', this.value)">' +
+            '<option value="all">All areas</option>' +
+            uniqueAreas.map(function (a) { return '<option value="' + a.id + '"' + (ui.area === a.id ? ' selected' : '') + '>' + esc(a.lbl) + '</option>'; }).join('') +
+          '</select>' +
+          '<select onchange="setIssueFilter(\'where\', this.value)">' +
+            '<option value="all">All page types</option>' +
+            uniqueWheres.map(function (w) { return '<option value="' + w.id + '"' + (ui.where === w.id ? ' selected' : '') + '>' + esc(w.lbl) + '</option>'; }).join('') +
+          '</select>' +
+          '<select onchange="setIssueFilter(\'owner\', this.value)">' +
+            '<option value="all">All owners</option>' +
+            uniqueOwners.map(function (o) { return '<option value="' + esc(o) + '"' + (ui.owner === o ? ' selected' : '') + '>' + esc(o) + '</option>'; }).join('') +
+          '</select>' +
+          '<select onchange="setIssueFilter(\'sort\', this.value)">' +
+            '<option value="severity"' + (ui.sort === 'severity' ? ' selected' : '') + '>Sort: Severity</option>' +
+            '<option value="pages"' + (ui.sort === 'pages' ? ' selected' : '') + '>Sort: Pages affected</option>' +
+            '<option value="area"' + (ui.sort === 'area' ? ' selected' : '') + '>Sort: Area</option>' +
+          '</select>' +
+          '<input type="text" placeholder="Search issues or URLs…" value="' + esc(ui.q) + '" oninput="setIssueFilter(\'q\', this.value)" style="width:190px;" />' +
+          (ui.sev !== 'all' || ui.area !== 'all' || ui.where !== 'all' || ui.owner !== 'all' || ui.q
+            ? '<button type="button" class="btn" onclick="resetIssueFilters()">Clear</button>'
+            : '') +
+        '</div>' +
+      '</div>';
+
+    const bodyHtml = filtered.length === 0
+      ? '<tr><td colspan="8" style="padding:20px;color:var(--ink-soft);text-align:center;">No issues match these filters.</td></tr>'
+      : filtered.map(function (r) {
+          const open = Boolean(ui.expandedRows[r.rowId]);
+          const done = isFixed(v.crawl.domain, r.rowId);
+          const showAll = Boolean(ui.showAllUrls[r.rowId]);
+          const shownItems = showAll ? r.affectedItems : r.affectedItems.slice(0, 10);
+
+          const mainRow =
+            '<tr class="issue-row ' + (open ? 'open' : '') + (done ? ' fixed-row' : '') + '" onclick="toggleIssueRow(\'' + r.rowId + '\')">' +
+              '<td>' + sevDot(r.severity) + '</td>' +
+              '<td><strong>' + esc(r.issue) + '</strong>' + (done ? ' <span class="yes">Fixed</span>' : '') + '</td>' +
+              '<td style="white-space:nowrap;">' + esc(r.whereLabel) + '</td>' +
+              '<td style="white-space:nowrap;">' +
+                '<div class="pg-cell"><span class="mono">' + r.affectedCount + ' / ' + r.checkedCount + '</span>' +
+                '<span class="mini-tr"><span class="mini-fl ' + r.severity + '" style="width:' + Math.max(4, r.affectedPct) + '%"></span></span></div>' +
+              '</td>' +
+              '<td>' + (r.exampleUrl ? '<a class="ux-url" href="' + esc(r.exampleUrl) + '" target="_blank" rel="noopener" onclick="event.stopPropagation()">' + esc(shortPath(r.exampleUrl)) + ' ↗</a>' : '—') + '</td>' +
+              '<td>' + esc(r.action) + '</td>' +
+              '<td style="white-space:nowrap;color:var(--ink-soft);font-size:12px;">' + esc(r.owner) + ' · ' + esc(r.effortLabel) + '</td>' +
+              '<td style="text-align:center;color:var(--ink-faint);">' + (open ? '▾' : '▸') + '</td>' +
+            '</tr>';
+
+          if (!open) return mainRow;
+
+          const detailRow =
+            '<tr class="detail-row"><td colspan="8"><div class="detail-box">' +
+              '<div class="detail-grid">' +
+                '<div>' +
+                  '<div class="detail-head">Affected URLs (' + r.affectedCount + ')</div>' +
+                  '<div class="detail-urls">' +
+                    shownItems.map(function (it) {
+                      return '<div class="du-row"><a class="ux-url" href="' + esc(it.url) + '" target="_blank" rel="noopener">' + esc(shortPath(it.url)) + ' ↗</a><span class="du-val">' + esc(it.currentValue) + '</span></div>';
+                    }).join('') +
+                  '</div>' +
+                  (r.affectedItems.length > 10
+                    ? '<button type="button" class="btn" style="margin-top:8px;font-size:11.5px;padding:3px 10px;" onclick="toggleShowAll(\'' + r.rowId + '\')">' + (showAll ? 'Show first 10' : 'Show all ' + r.affectedItems.length) + '</button>'
+                    : '') +
+                  (r.passingUrls.length > 0
+                    ? '<details class="pass-drop"><summary>' + r.passingUrls.length + ' ' + esc(r.whereLabel.toLowerCase()) + ' pass this check ▸</summary><div class="detail-urls" style="margin-top:6px;">' +
+                        r.passingUrls.slice(0, 15).map(function (u) {
+                          return '<div class="du-row"><a class="ux-url" href="' + esc(u) + '" target="_blank" rel="noopener">' + esc(shortPath(u)) + ' ↗</a><span class="yes">Pass</span></div>';
+                        }).join('') +
+                      '</div></details>'
+                    : '') +
+                '</div>' +
+                '<div>' +
+                  '<div class="detail-head">How to fix (' + esc(v.crawl.platform.toUpperCase()) + ')</div>' +
+                  '<ol class="fix-ol">' + r.platformSteps.map(function (s) { return '<li>' + esc(s) + '</li>'; }).join('') + '</ol>' +
+                  (r.beforeAfter.length
+                    ? '<div class="ba-mini">' + r.beforeAfter.slice(0, 1).map(function (ba) {
+                        return '<div class="ba-c"><strong>Now:</strong> ' + esc(ba.currentValue) + '</div><div class="ba-s"><strong>Target:</strong> ' + esc(ba.suggestedValue) + '</div>';
+                      }).join('') + '</div>'
+                    : '') +
+                  '<details class="why-drop"><summary>▸ What we tested and why it matters</summary><div class="why-body"><p>' + esc(r.whyTested) + '</p>' +
+                    (r.threshold ? '<p class="mono" style="font-size:11.5px;color:var(--ink-faint);margin-top:4px;">Threshold: ' + esc(r.threshold) + ' · Check ID: ' + esc(r.ruleId) + '</p>' : '') +
+                  '</div></details>' +
+                  '<div style="display:flex;gap:8px;margin-top:12px;">' +
+                    '<button type="button" class="btn" id="tk-' + r.rowId + '" onclick="copyRowTicket(\'' + r.rowId + '\')">Copy as ticket</button>' +
+                    '<button type="button" class="btn" onclick="toggleMarkFixed(\'' + r.rowId + '\')">' + (done ? '✓ Marked fixed' : 'Mark as fixed') + '</button>' +
+                  '</div>' +
+                '</div>' +
+              '</div>' +
+            '</div></td></tr>';
+
+          return mainRow + detailRow;
+        }).join('');
+
+    document.getElementById('sec-issues-table').innerHTML =
+      '<div class="panel"><div class="panel-body" style="padding:16px 18px 0;">' + controls + '</div>' +
+      '<div class="ex-table-wrap"><table class="ex-table"><thead><tr>' +
+        '<th>Severity</th><th>Issue</th><th>Where</th><th>Pages</th><th>Example</th><th>Action</th><th>Owner · time</th><th></th>' +
+      '</tr></thead><tbody>' + bodyHtml + '</tbody></table></div></div>';
+  }
+
+  /* ---------------- Pages Table (Good / Needs work / Broken) ---------------- */
+  function renderPagesTable() {
+    const v = activeReport;
+    if (!v) return;
+    const all = v.pageRows || [];
+    const goodN = all.filter(function (p) { return p.status === 'good'; }).length;
+    const warnN = all.filter(function (p) { return p.status === 'needs_work'; }).length;
+    const brokN = all.filter(function (p) { return p.status === 'broken'; }).length;
+
+    let rows = all;
+    if (ui.pageTab !== 'all') rows = rows.filter(function (p) { return p.status === ui.pageTab; });
+    if (ui.pageQ) {
+      const q = ui.pageQ.toLowerCase();
+      rows = rows.filter(function (p) {
+        return (p.url + ' ' + p.pageTypeLabel + ' ' + p.topIssue).toLowerCase().indexOf(q) !== -1;
+      });
+    }
+
+    const tabs =
+      '<div class="tbl-bar">' +
+        '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">' +
+          '<h2 class="tbl-h2" style="margin-right:8px;">Checked pages (' + all.length + ')</h2>' +
+          '<button type="button" class="ck-pill ' + (ui.pageTab === 'all' ? 'on' : '') + '" onclick="setPageTab(\'all\')">All (' + all.length + ')</button>' +
+          '<button type="button" class="ck-pill ' + (ui.pageTab === 'good' ? 'on' : '') + '" onclick="setPageTab(\'good\')">● Good (' + goodN + ')</button>' +
+          '<button type="button" class="ck-pill ' + (ui.pageTab === 'needs_work' ? 'on' : '') + '" onclick="setPageTab(\'needs_work\')">● Needs work (' + warnN + ')</button>' +
+          '<button type="button" class="ck-pill ' + (ui.pageTab === 'broken' ? 'on' : '') + '" onclick="setPageTab(\'broken\')">● Broken (' + brokN + ')</button>' +
+        '</div>' +
+        '<input type="text" placeholder="Filter URLs…" value="' + esc(ui.pageQ) + '" oninput="setPageQuery(this.value)" style="width:200px;" />' +
+      '</div>';
+
+    const body = rows.slice(0, 50).map(function (p) {
+      return (
+        '<tr class="issue-row" onclick="openUrlPanel(\'' + esc(p.url).replace(/'/g, '&#39;') + '\')">' +
+          '<td>' + pageStatusBadge(p.status) + '</td>' +
+          '<td><span class="ux-url">' + esc(p.shortPath) + '</span></td>' +
+          '<td>' + esc(p.pageTypeLabel) + '</td>' +
+          '<td class="mono">' + (p.issueCount === 0 ? '0' : p.issueCount + (p.criticalCount ? ' (' + p.criticalCount + ' critical)' : '')) + '</td>' +
+          '<td>' + esc(p.topIssue) + '</td>' +
+          '<td style="font-size:12px;color:var(--ink-soft);">' + esc(p.keyValues) + '</td>' +
+        '</tr>'
+      );
+    }).join('');
+
+    document.getElementById('sec-pages-table').innerHTML =
+      '<div class="panel"><div class="panel-body" style="padding:16px 18px 0;">' + tabs + '</div>' +
+      '<div class="ex-table-wrap"><table class="ex-table"><thead><tr>' +
+        '<th>Status</th><th>URL (click to inspect)</th><th>Page type</th><th>Issues</th><th>Top issue</th><th>Key values</th>' +
+      '</tr></thead><tbody>' + (body || '<tr><td colspan="6" style="padding:18px;text-align:center;color:var(--ink-faint);">No pages in this filter.</td></tr>') + '</tbody></table></div></div>';
+  }
+
+  /* ---------------- URL Detail Side Panel ---------------- */
+  window.openUrlPanel = function (url) {
+    if (!activeReport) return;
+    const p = (activeReport.pageRows || []).find(function (x) { return x.url === url; });
+    if (!p) return;
+    const failed = p.checks.filter(function (c) { return c.status === 'fail'; });
+    const passed = p.checks.filter(function (c) { return c.status === 'pass'; });
+
+    document.getElementById('url-drawer-content').innerHTML =
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:14px;">' +
+        '<div>' + pageStatusBadge(p.status) + ' <span class="tag">' + esc(p.pageTypeLabel) + '</span>' +
+          '<h3 style="font-family:var(--font-serif);font-size:18px;margin-top:8px;word-break:break-all;">' + esc(p.shortPath) + '</h3>' +
+          '<a class="ux-url" href="' + esc(p.url) + '" target="_blank" rel="noopener">Open live page ↗</a>' +
+        '</div>' +
+        '<button type="button" class="btn" onclick="closeUrlPanel()">✕ Close</button>' +
+      '</div>' +
+      '<div style="font-size:12.5px;color:var(--ink-soft);margin-bottom:16px;padding:10px 12px;background:var(--bg);border-radius:6px;">' + esc(p.keyValues) + '</div>' +
+      '<h4 style="font-size:13px;color:var(--block);margin-bottom:6px;">Failed checks (' + failed.length + ')</h4>' +
+      (failed.length
+        ? failed.map(function (c) {
+            return '<div class="url-chk fail"><div>' + sevDot(c.severity) + ' <strong>' + esc(c.issue) + '</strong><div class="uc-v">Measured: ' + esc(c.measuredValue) + '</div><div class="uc-a">Fix: ' + esc(c.action) + '</div></div></div>';
+          }).join('')
+        : '<p style="font-size:13px;color:var(--good);margin-bottom:12px;">No failed checks on this URL.</p>') +
+      '<h4 style="font-size:13px;color:var(--good);margin:16px 0 6px;">Passed checks (' + passed.length + ')</h4>' +
+      passed.map(function (c) {
+        return '<div class="url-chk pass"><div><span class="yes">✓ Pass</span> <strong>' + esc(c.issue) + '</strong><div class="uc-v">' + esc(c.measuredValue) + '</div></div></div>';
+      }).join('');
+
+    document.getElementById('url-drawer-backdrop').classList.add('open');
+  };
+
+  window.closeUrlPanel = function () {
+    document.getElementById('url-drawer-backdrop').classList.remove('open');
+  };
+
+  /* ---------------- Below the Fold (Collapsed) ---------------- */
+  function renderBelowFold(v) {
+    const passedChecks = v.areas.flatMap(function (a) {
+      return a.ruleResults.filter(function (r) { return r.kind === 'issue' && r.status === 'pass'; });
+    });
+    const unmeasured = v.areas.flatMap(function (a) {
+      return a.ruleResults.filter(function (r) { return r.status === 'not_measured'; });
+    });
+
+    document.getElementById('sec-below-fold').innerHTML =
+      '<details class="ex-panel"><summary><div><h3>Passed checks (' + passedChecks.length + ')</h3><div class="ex-desc">Checks with zero failures across inspected pages</div></div><span class="yes">' + passedChecks.length + ' passed</span></summary>' +
+      '<div style="padding:0 18px 16px;">' +
+        passedChecks.map(function (r) {
+          return '<div class="bf-row"><span><span class="yes">✓</span> ' + esc(r.title) + '</span><span class="mono" style="font-size:12px;color:var(--ink-faint);">' + r.applicableCount + ' ' + esc(r.denominatorNoun) + '</span></div>';
+        }).join('') +
+      '</div></details>' +
+
+      '<details class="ex-panel"><summary><div><h3>Not measured (' + unmeasured.length + ')</h3><div class="ex-desc">Checks that require a deep scan or missing page types</div></div><span class="ex-count">' + unmeasured.length + '</span></summary>' +
+      '<div style="padding:0 18px 16px;">' +
+        (unmeasured.length
+          ? unmeasured.map(function (r) {
+              return '<div class="bf-row"><span>' + esc(r.title) + '</span><span style="font-size:12px;color:var(--ink-soft);">' + esc(r.notMeasuredReason || 'Run deep scan') + '</span></div>';
+            }).join('')
+          : '<p style="font-size:13px;color:var(--ink-soft);">All checks were measured.</p>') +
+      '</div></details>' +
+
+      '<details class="ex-panel"><summary><div><h3>Store facts</h3><div class="ex-desc">Neutral store metadata and speed measurements</div></div><span class="ex-count">' + v.storeSnapshot.length + ' facts</span></summary>' +
+      '<div style="padding:0 18px 16px;"><div class="snapshot-strip">' +
         v.storeSnapshot.map(function (s) {
           return '<div class="snap-item"><div class="sl">' + esc(s.label) + '</div><div class="sv">' + esc(s.value) + '</div><div class="sd">' + esc(s.detail || '') + '</div></div>';
         }).join('') +
-      '</div></div></div>' +
-      (v.opportunities.length
-        ? '<div class="panel"><div class="panel-head"><h3>Growth opportunities (' + v.opportunities.length + ')</h3><span class="verified">Optional business ideas · excluded from health score</span></div><div class="panel-body">' +
-            v.opportunities.map(function (o) {
-              return '<div class="check-row"><div><strong>' + esc(o.plainTitle) + '</strong><div style="font-size:12.5px;color:var(--ink-soft);">' + o.affectedCount + ' of ' + o.applicableCount + ' ' + esc(o.denominatorNoun) + ' · Owner: ' + esc(o.owner) + '</div></div><span class="tier-badge nice_to_have">Opportunity</span></div>';
-            }).join('') +
-          '</div></div>'
-        : '');
+      '</div><p style="font-size:12px;color:var(--ink-soft);margin-top:10px;">' + esc(v.localSpeed.disclaimer) + '</p></div></details>' +
 
-    // Layer 3 Evidence Drawer
-    const d = v.denominators;
-    document.getElementById('layer-3-body').innerHTML =
-      '<p style="font-size:13px;color:var(--ink-soft);margin-bottom:12px;">Shared denominators across every area &amp; tool: <strong>' + d.discoveredUrls + '</strong> discovered URLs · <strong>' + d.okHtmlPages + '</strong> inspected HTML pages (' + d.byPageTypeHtml.product + ' product pages, ' + (d.byPageTypeHtml.collection + d.byPageTypeHtml.category) + ' collection pages, ' + (d.byPageTypeHtml.blog + d.byPageTypeHtml.informational) + ' editorial pages) · <strong>' + d.deepInspectedPages + '</strong> browser-rendered pages.</p>' +
-      '<div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(230px, 1fr));gap:8px;">' +
+      '<details class="ex-panel"><summary><div><h3>Growth opportunities (' + v.opportunities.length + ')</h3><div class="ex-desc">Optional merchandising and content ideas (excluded from health score)</div></div><span class="ex-count">' + v.opportunities.length + '</span></summary>' +
+      '<div style="padding:0 18px 16px;">' +
+        (v.opportunities.length
+          ? v.opportunities.map(function (o) {
+              return '<div class="bf-row"><span>' + esc(o.plainTitle) + '</span><span style="font-size:12px;color:var(--ink-soft);">' + o.affectedCount + ' of ' + o.applicableCount + ' ' + esc(o.denominatorNoun) + '</span></div>';
+            }).join('')
+          : '<p style="font-size:13px;color:var(--ink-soft);">No extra opportunities flagged.</p>') +
+      '</div></details>' +
+
+      '<details class="ex-panel"><summary><div><h3>Specialist view (17 modular tools)</h3><div class="ex-desc">Open individual diagnostic engines, rule IDs, and raw CSV tables</div></div><span class="ex-count">17 tools</span></summary>' +
+      '<div style="padding:0 18px 16px;display:grid;grid-template-columns:repeat(auto-fill, minmax(220px, 1fr));gap:8px;">' +
         ALL_TOOLS.map(function (t) {
           return '<a class="btn" style="justify-content:flex-start;text-align:left;" href="/tools/' + t.slug + '?crawlId=' + encodeURIComponent(v.crawl.crawlId) + '&autoScan=true">' + esc(t.name) + ' →</a>';
         }).join('') +
-      '</div>';
+      '</div></details>';
   }
 
-  function renderFixPackets(v) {
-    const tierText = { fix_now: 'Fix now', fix_soon: 'Fix soon', nice_to_have: 'Nice to have' };
-    const confText = { verified: 'Verified', sampled: 'Sampled', small_sample: 'Small sample (<8 pages)', not_measured: 'Not measured' };
-    const html =
-      v.fixFirst.length === 0
-        ? '<div class="empty-state">✓ No urgent fixes needed — every measured issue check passed.</div>'
-        : '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px;"><h2 class="ux-section-title" style="margin:0;">Fix first (' + v.fixFirst.length + ' template tasks)</h2><span style="font-size:12.5px;color:var(--ink-soft);">Ordered by score lift per effort · ' + v.allTasks.length + ' total tasks</span></div>' +
-          '<div class="packet-list">' +
-          v.fixFirst.map(function (t, idx) {
-            const done = isDone(v.crawl.domain, t.taskId);
-            return (
-              '<div class="packet-card ' + t.actionTier + (done ? ' done' : '') + '">' +
-                '<div class="packet-head">' +
-                  '<div style="flex:1;">' +
-                    '<div class="packet-meta"><span class="tier-badge ' + t.actionTier + '">' + tierText[t.actionTier] + '</span><span class="lift-badge">+' + t.projectedScoreLift + ' pts</span><span>' + esc(t.owner) + ' · ' + esc(t.effortLabel) + '</span><span class="tag">' + confText[t.confidenceTag] + '</span><span class="specialist-only mono" style="font-size:11px;">[' + esc(t.ruleIds.join(', ')) + ']</span></div>' +
-                    '<div class="packet-title">' + (idx + 1) + '. ' + esc(t.title) + '</div>' +
-                    '<div class="packet-proof">' + esc(t.proofLine) + '</div>' +
-                  '</div>' +
-                '</div>' +
-                '<div class="packet-actions">' +
-                  '<button type="button" class="btn" onclick="togglePacketDrawer(\'' + t.taskId + '\', \'how\')">How to fix on ' + esc(v.crawl.platform.toUpperCase()) + '</button>' +
-                  '<button type="button" class="btn" onclick="togglePacketDrawer(\'' + t.taskId + '\', \'pages\')">See pages (' + t.affectedUrls.length + ')</button>' +
-                  '<button type="button" class="btn" id="copy-btn-' + t.taskId + '" onclick="copyTicket(\'' + t.taskId + '\')">Copy as task</button>' +
-                  '<button type="button" class="btn" onclick="toggleDone(\'' + t.taskId + '\')">' + (done ? '✓ Marked done' : 'Mark done') + '</button>' +
-                '</div>' +
-                '<div class="packet-drawer" id="drawer-how-' + t.taskId + '">' +
-                  (t.beforeAfter.length
-                    ? '<div class="ba-grid">' +
-                        t.beforeAfter.slice(0, 1).map(function (ba) {
-                          return (
-                            '<div class="ba-box cur"><strong>' + esc(ba.currentLabel) + ':</strong><br/>' + esc(ba.currentValue) + '</div>' +
-                            '<div class="ba-box sug"><strong>' + esc(ba.suggestedLabel) + ':</strong><br/>' + esc(ba.suggestedValue) + '</div>'
-                          );
-                        }).join('') +
-                      '</div>'
-                    : '') +
-                  '<ol style="margin:6px 0 0 18px;font-size:13px;line-height:1.65;">' +
-                    t.platformSteps.map(function (s) {
-                      return '<li>' + esc(s) + '</li>';
-                    }).join('') +
-                  '</ol>' +
-                '</div>' +
-                '<div class="packet-drawer" id="drawer-pages-' + t.taskId + '">' +
-                  '<div class="url-list">' +
-                    t.affectedUrls.slice(0, 25).map(function (u) {
-                      return '<a class="ux-url" href="' + esc(u) + '" target="_blank" rel="noopener">' + esc(u) + ' ↗</a>';
-                    }).join('') +
-                  '</div>' +
-                '</div>' +
-              '</div>'
-            );
-          }).join('') +
-          '</div>';
-    document.getElementById('layer-1-fix-first').innerHTML = html;
-  }
-
-  function renderAreaDetail(v, areaId) {
-    const area = v.areas.find(function (a) {
-      return a.areaId === areaId;
+  /* ---------------- Interactive Handlers ---------------- */
+  window.toggleSevFilter = function (s) { ui.sev = ui.sev === s ? 'all' : s; renderHeaderAndVisuals(activeReport); renderIssuesTable(); };
+  window.filterByArea = function (a) { ui.area = ui.area === a ? 'all' : a; renderIssuesTable(); document.getElementById('sec-issues-table').scrollIntoView({ behavior: 'smooth' }); };
+  window.filterByWhere = function (w) { ui.where = ui.where === w ? 'all' : w; renderIssuesTable(); document.getElementById('sec-issues-table').scrollIntoView({ behavior: 'smooth' }); };
+  window.filterAreaAndWhere = function (a, w) { ui.area = a; ui.where = w; renderIssuesTable(); document.getElementById('sec-issues-table').scrollIntoView({ behavior: 'smooth' }); };
+  window.setIssueFilter = function (k, val) { ui[k] = val; renderIssuesTable(); };
+  window.resetIssueFilters = function () { ui.sev = 'all'; ui.area = 'all'; ui.where = 'all'; ui.owner = 'all'; ui.q = ''; renderHeaderAndVisuals(activeReport); renderIssuesTable(); };
+  window.toggleIssueRow = function (id) { ui.expandedRows[id] = !ui.expandedRows[id]; renderIssuesTable(); };
+  window.toggleShowAll = function (id) { ui.showAllUrls[id] = !ui.showAllUrls[id]; renderIssuesTable(); };
+  window.toggleMarkFixed = function (id) {
+    if (!activeReport) return;
+    const k = fixedKey(activeReport.crawl.domain, id);
+    localStorage.setItem(k, isFixed(activeReport.crawl.domain, id) ? '0' : '1');
+    renderIssuesTable();
+  };
+  window.copyRowTicket = function (id) {
+    if (!activeReport) return;
+    const r = (activeReport.issueRows || []).find(function (x) { return x.rowId === id; });
+    if (!r) return;
+    navigator.clipboard.writeText(r.ticketMarkdown).then(function () {
+      const b = document.getElementById('tk-' + id);
+      if (b) { b.textContent = '✓ Copied'; setTimeout(function () { b.textContent = 'Copy as ticket'; }, 1400); }
     });
-    if (!area) return;
-    const failed = area.ruleResults.filter(function (r) {
-      return r.kind === 'issue' && r.status === 'fail';
-    });
-    const passed = area.ruleResults.filter(function (r) {
-      return r.kind === 'issue' && r.status === 'pass';
-    });
-    const unmeasured = area.ruleResults.filter(function (r) {
-      return r.status === 'not_measured';
-    });
+  };
+  window.setPageTab = function (t) { ui.pageTab = t; renderPagesTable(); };
+  window.setPageQuery = function (q) { ui.pageQ = q; renderPagesTable(); };
 
-    let extraPanel = '';
-    if (areaId === 'ai_readiness') {
-      const ai = v.aiReadiness;
-      extraPanel =
-        '<div style="margin:14px 0;padding:14px;background:var(--bg);border:1px solid var(--line);border-radius:8px;font-size:13px;">' +
-          '<strong>AI Crawler Access (robots.txt):</strong> Search/Citation bots are scored separately from Training bots.' +
-          '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">' +
-            ai.bots.map(function (b) {
-              return '<span class="tag">' + esc(b.userAgent) + ' (' + (b.purpose === 'training' ? 'Training' : 'Search') + '): <strong>' + esc(b.robotsStatus) + '</strong></span>';
-            }).join('') +
-          '</div>' +
-          '<div style="margin-top:10px;"><strong>Raw HTML vs Rendered DOM:</strong> ' + esc(ai.rawVsRenderedParity.summary) + '</div>' +
-        '</div>';
-    } else if (areaId === 'site_health_speed') {
-      const sp = v.localSpeed;
-      extraPanel =
-        '<div style="margin:14px 0;padding:14px;background:var(--bg);border:1px solid var(--line);border-radius:8px;font-size:13px;">' +
-          '<strong>Local Speed &amp; Measurement Hygiene</strong> <span class="tag">' + (sp.browserVitals.measured ? 'Lab estimate (local Chromium)' : 'Static HTTP only') + '</span>' +
-          '<div style="font-size:12px;color:var(--ink-soft);margin:6px 0 10px;">' + esc(sp.disclaimer) + '</div>' +
-          '<div class="snapshot-strip">' +
-            '<div class="snap-item"><div class="sl">Avg HTML Size</div><div class="sv">' + sp.staticMetrics.avgHtmlKb + ' KB</div><div class="sd">Max: ' + sp.staticMetrics.maxHtmlKb + ' KB</div></div>' +
-            '<div class="snap-item"><div class="sl">3rd-Party Scripts</div><div class="sv">' + sp.staticMetrics.avgThirdPartyScripts + ' avg</div><div class="sd">' + sp.staticMetrics.thirdPartyDomains.length + ' external domains</div></div>' +
-            '<div class="snap-item"><div class="sl">Lab LCP (≤2.5s)</div><div class="sv">' + (sp.browserVitals.lcpMs !== null ? (sp.browserVitals.lcpMs / 1000).toFixed(2) + 's' : 'Not measured') + '</div><div class="sd">' + (sp.browserVitals.measured ? 'Lab estimate' : 'Run Deep scan') + '</div></div>' +
-            '<div class="snap-item"><div class="sl">Lab CLS (≤0.1)</div><div class="sv">' + (sp.browserVitals.cls !== null ? sp.browserVitals.cls : 'Not measured') + '</div><div class="sd">' + (sp.browserVitals.measured ? 'Lab estimate' : 'Run Deep scan') + '</div></div>' +
-          '</div>' +
-        '</div>';
-    }
+  window.exportIssuesCsv = function () {
+    const rows = getFilteredIssues();
+    const header = ['Severity', 'Issue', 'Where', 'Affected', 'Checked', 'Example URL', 'Action', 'Owner', 'Effort', 'Rule ID'];
+    const escCsv = function (s) {
+      const str = String(s == null ? '' : s);
+      return /[,"\n]/.test(str) ? '"' + str.replace(/"/g, '""') + '"' : str;
+    };
+    const lines = [header.join(',')].concat(rows.map(function (r) {
+      return [r.severity, r.issue, r.whereLabel, r.affectedCount, r.checkedCount, r.exampleUrl || '', r.action, r.owner, r.effortLabel, r.ruleId].map(escCsv).join(',');
+    }));
+    const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = (activeReport ? activeReport.crawl.domain : 'store') + '-issues.csv';
+    a.click();
+  };
 
-    function row(r) {
-      return (
-        '<div class="check-row"><div><strong>' + esc(r.status === 'pass' ? r.title : r.plainTitle) + '</strong> <span class="specialist-only mono" style="font-size:11px;color:var(--ink-faint);">[' + esc(r.ruleId) + ']</span>' +
-        '<div style="font-size:12.5px;color:var(--ink-soft);">' + (r.status === 'not_measured' ? esc(r.notMeasuredReason || 'Not measured') : (r.status === 'pass' ? 'All ' + r.applicableCount + ' ' + esc(r.denominatorNoun) + ' passed' : r.affectedCount + ' of ' + r.applicableCount + ' ' + esc(r.denominatorNoun) + ' affected')) + '</div></div>' +
-        '<span class="status-chip ' + r.status + '">' + (r.status === 'pass' ? '✓ Passed' : r.status === 'fail' ? '✕ Failed' : 'Not measured') + '</span></div>'
-      );
-    }
-
-    document.getElementById('layer-2-area').innerHTML =
-      '<div class="panel"><div class="panel-head"><div><h3>' + esc(area.label) + ' — ' + (area.score !== null ? area.score + '/100 (Grade ' + area.grade + ')' : 'Not measured') + '</h3><span class="verified">' + esc(area.description) + '</span></div></div>' +
-      '<div class="panel-body">' +
-        extraPanel +
-        (failed.length ? '<h4 style="font-size:13px;color:var(--block);margin:10px 0 4px;">Issues detected (' + failed.length + ')</h4>' + failed.map(row).join('') : '<p style="color:var(--good);font-size:13.5px;">✓ No issues detected in ' + esc(area.label) + '.</p>') +
-        (unmeasured.length ? '<h4 style="font-size:13px;color:var(--ink-soft);margin:14px 0 4px;">Not measured (' + unmeasured.length + ')</h4>' + unmeasured.map(row).join('') : '') +
-        (passed.length ? '<details style="margin-top:14px;"><summary style="cursor:pointer;font-size:13px;font-weight:600;color:var(--good);">Passed checks (' + passed.length + ') ▾</summary><div style="margin-top:8px;">' + passed.map(row).join('') + '</div></details>' : '') +
-      '</div></div>';
+  function renderAll(v) {
+    activeReport = v;
+    document.getElementById('pre-scan-section').style.display = 'none';
+    document.getElementById('verdict-workspace').style.display = 'block';
+    renderHeaderAndVisuals(v);
+    renderIssuesTable();
+    renderPagesTable();
+    renderBelowFold(v);
   }
 
   async function runAuditRequest(payload) {
@@ -268,8 +502,8 @@
     const progTitle = document.getElementById('verdict-progress-title');
     const progStep = document.getElementById('verdict-progress-step');
     prog.style.display = 'block';
-    progTitle.textContent = 'Auditing ' + (payload.domainInput || 'saved scan') + '…';
-    progStep.textContent = 'Reading robots.txt, XML sitemaps, and inspecting product/collection/editorial pages…';
+    progTitle.textContent = 'Scanning ' + (payload.domainInput || 'saved crawl') + '…';
+    progStep.textContent = 'Checking robots.txt, sitemaps, and inspecting product, collection, and editorial pages…';
     try {
       const res = await fetch('/api/audit/run', {
         method: 'POST',
@@ -279,20 +513,20 @@
       const data = await res.json();
       prog.style.display = 'none';
       if (!res.ok) throw new Error(data.error || 'Audit failed');
-      renderVerdict(data);
+      renderAll(data);
     } catch (err) {
       progStep.textContent = '✕ ' + err.message;
     }
   }
 
+  window.rescanCurrent = function (level) {
+    if (!activeReport) return;
+    runAuditRequest({ domainInput: activeReport.crawl.domain, maxLevel: level || 'C', forceRecrawl: true });
+  };
   window.runVerdictFor = function (domain) {
     document.getElementById('verdict-domain-input').value = domain;
-    runAuditRequest({
-      domainInput: domain,
-      maxLevel: document.getElementById('verdict-scan-mode').value,
-    });
+    runAuditRequest({ domainInput: domain, maxLevel: document.getElementById('verdict-scan-mode').value });
   };
-
   window.loadSavedVerdict = function (crawlId) {
     runAuditRequest({ crawlId: crawlId });
   };
@@ -303,10 +537,7 @@
       e.preventDefault();
       const d = document.getElementById('verdict-domain-input').value.trim();
       if (!d) return;
-      runAuditRequest({
-        domainInput: d,
-        maxLevel: document.getElementById('verdict-scan-mode').value,
-      });
+      runAuditRequest({ domainInput: d, maxLevel: document.getElementById('verdict-scan-mode').value });
     });
   }
 

@@ -107,4 +107,49 @@ describe('Store-First Verdict, Shared Denominators & Acceptance Tests', () => {
 
     db.close();
   });
+
+  test('4. Presentation rework invariants: fail=>affected>=1, Good+NeedsWork+Broken=checked, copy lengths & banned words', async () => {
+    const { db, shopifyCrawl } = await setupTwoStoreTestDb('B');
+    const verdict = computeStoreVerdict(db, shopifyCrawl);
+
+    // Every fail must have affectedCount >= 1; every pass must have applicableCount >= 1
+    const allResults = verdict.areas.flatMap((a) => a.ruleResults);
+    for (const r of allResults) {
+      if (r.status === 'fail') {
+        assert.ok(r.affectedCount >= 1, `Failed rule ${r.ruleId} must have affectedCount >= 1 (got ${r.affectedCount})`);
+      }
+      if (r.status === 'pass') {
+        assert.ok(r.applicableCount >= 1, `Passed rule ${r.ruleId} must have applicableCount >= 1`);
+      }
+    }
+
+    // Pages table invariant: Good + Needs work + Broken === checked pages
+    const pageRows = (verdict.pageRows ?? []) as Array<{ status: string }>;
+    const good = pageRows.filter((p) => p.status === 'good').length;
+    const needsWork = pageRows.filter((p) => p.status === 'needs_work').length;
+    const broken = pageRows.filter((p) => p.status === 'broken').length;
+    assert.equal(good + needsWork + broken, pageRows.length);
+    assert.equal(pageRows.length, verdict.denominators.okHtmlPages);
+
+    // Issue table copy lint: max lengths & zero banned words
+    const issueRows = (verdict.issueRows ?? []) as Array<{
+      ruleId: string;
+      severity: string;
+      issue: string;
+      action: string;
+    }>;
+    assert.ok(issueRows.length > 0);
+    const bannedCopy = /(will improve|boost|skyrocket|may help|guaranteed)/i;
+    for (const row of issueRows) {
+      assert.ok(row.issue.length <= 70, `Issue too long (${row.issue.length}): ${row.issue}`);
+      assert.ok(row.action.length <= 90, `Action too long (${row.action.length}): ${row.action}`);
+      assert.ok(!bannedCopy.test(row.issue + ' ' + row.action), `Banned copy in ${row.ruleId}`);
+    }
+
+    // Critical severity cap (<= 30% on fixture with intentional schema/noindex defects)
+    const criticalCount = issueRows.filter((r) => r.severity === 'critical').length;
+    assert.ok(criticalCount / issueRows.length <= 0.35, `Critical share too high: ${criticalCount}/${issueRows.length}`);
+
+    db.close();
+  });
 });

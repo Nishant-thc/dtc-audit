@@ -3,6 +3,7 @@ import { TOOL_REGISTRY } from '../tools/registry.ts';
 import { RulesEngine } from './rules-engine.ts';
 import { evaluateAiReadiness } from './ai-readiness.ts';
 import { evaluateLocalSpeed } from './local-speed.ts';
+import { buildWorkingSeoTables } from './page-results.ts';
 import { RULE_PLAYBOOK } from '../ui/playbook.ts';
 import type {
   ActionTier,
@@ -725,17 +726,22 @@ export function computeStoreVerdict(db: SharedDatabase, crawl: CrawlRecord): Sto
   const sym = currency === 'GBP' ? '£' : currency === 'EUR' ? '€' : '$';
   const onSaleCount = products.filter((p) => p.discountPercentage !== null && p.discountPercentage > 0).length;
 
+  const htmlSizeVerdict =
+    speedEval.summary.staticMetrics.avgHtmlKb > 500
+      ? `${(speedEval.summary.staticMetrics.avgHtmlKb / 1024).toFixed(1)} MB — heavy (target < 500 KB)`
+      : `${speedEval.summary.staticMetrics.avgHtmlKb} KB — good (target < 500 KB)`;
+
   const storeSnapshot: StoreSnapshotFact[] = [
-    { id: 'platform', label: 'Platform', value: crawl.platform.toUpperCase(), detail: `${denoms.discoveredUrls} discovered URLs · ${denoms.okHtmlPages} pages inspected` },
-    { id: 'products', label: 'Product pages', value: `${denoms.entities.products} inspected`, detail: `${denoms.byPageTypeDiscovered.product} discovered in sitemap/links` },
-    { id: 'collections', label: 'Collection pages', value: `${denoms.entities.collections} inspected`, detail: `${denoms.byPageTypeDiscovered.collection + denoms.byPageTypeDiscovered.category} discovered` },
-    { id: 'price_range', label: 'Observed price range', value: prices.length > 0 ? `${sym}${Math.min(...prices)}–${sym}${Math.max(...prices)}` : 'Not detected', detail: `${onSaleCount} of ${products.length} products on promotion` },
-    { id: 'editorial', label: 'Blog & editorial', value: `${contents.length} inspected`, detail: `${denoms.byPageTypeDiscovered.blog + denoms.byPageTypeDiscovered.informational} discovered` },
-    { id: 'scan_depth', label: 'Scan mode', value: crawl.maxLevel === 'C' ? 'Deep (with browser)' : crawl.maxLevel === 'B' ? 'Standard' : 'Quick', detail: `${denoms.deepInspectedPages} pages browser-rendered` },
+    { id: 'platform', label: 'Platform', value: crawl.platform.toUpperCase(), detail: `${denoms.discoveredUrls} URLs found · ${denoms.okHtmlPages} pages checked` },
+    { id: 'products', label: 'Product pages', value: `${denoms.byPageTypeHtml.product} checked`, detail: `${denoms.byPageTypeDiscovered.product} found in sitemap/links` },
+    { id: 'collections', label: 'Collection pages', value: `${denoms.byPageTypeHtml.collection + denoms.byPageTypeHtml.category} checked`, detail: `${denoms.byPageTypeDiscovered.collection + denoms.byPageTypeDiscovered.category} found` },
+    { id: 'price_range', label: 'Price range', value: prices.length > 0 ? `${sym}${Math.min(...prices)}–${sym}${Math.max(...prices)}` : 'Not detected', detail: `${onSaleCount} of ${products.length} products on sale` },
+    { id: 'editorial', label: 'Blog & editorial', value: `${denoms.byPageTypeHtml.blog + denoms.byPageTypeHtml.informational} checked`, detail: `${denoms.byPageTypeDiscovered.blog + denoms.byPageTypeDiscovered.informational} found` },
+    { id: 'html_weight', label: 'Avg HTML size', value: htmlSizeVerdict, detail: `${speedEval.summary.staticMetrics.thirdPartyDomains.length} third-party domains` },
   ];
 
   const issueResultsAll = allRuleResults.filter((r) => r.kind === 'issue');
-  return {
+  const baseReport: StoreVerdictReport = {
     crawl,
     denominators: denoms,
     overallScore,
@@ -758,4 +764,11 @@ export function computeStoreVerdict(db: SharedDatabase, crawl: CrawlRecord): Sto
     localSpeed: speedEval.summary,
     generatedAt: new Date().toISOString(),
   };
+
+  const tables = buildWorkingSeoTables(db, crawl, baseReport);
+  baseReport.issueRows = tables.issueRows;
+  baseReport.pageRows = tables.pageRows;
+  baseReport.visualSummary = tables.visualSummary;
+
+  return baseReport;
 }

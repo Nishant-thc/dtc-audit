@@ -673,6 +673,9 @@ export interface StoreVerdictReport {
   };
   aiReadiness: AiReadinessSummary;
   localSpeed: LocalSpeedSummary;
+  issueRows?: unknown[];
+  pageRows?: unknown[];
+  visualSummary?: unknown;
   generatedAt: string;
 }
 

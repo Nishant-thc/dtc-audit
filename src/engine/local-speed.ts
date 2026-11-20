@@ -5,6 +5,18 @@ import type {
   RuleResultRecord,
 } from '../types/entities.ts';
 
+function registrableDomain(hostname: string): string {
+  const parts = hostname.toLowerCase().replace(/^www\./, '').split('.').filter(Boolean);
+  if (parts.length <= 2) return parts.join('.');
+  const lastTwo = parts.slice(-2).join('.');
+  if (/^(co|com|org|net|gov)\.[a-z]{2}$/.test(lastTwo) && parts.length >= 3) {
+    return parts.slice(-3).join('.');
+  }
+  return lastTwo;
+}
+
+const PLATFORM_CDN_DOMAINS = new Set(['shopify.com', 'shopifycdn.com', 'cdn.shopify.com', 'bigcommerce.com']);
+
 export function evaluateLocalSpeed(
   db: SharedDatabase,
   crawl: CrawlRecord
@@ -14,6 +26,7 @@ export function evaluateLocalSpeed(
   const images = db.getImages(crawl.crawlId);
   const observations = db.getObservations(crawl.crawlId);
   const technologies = db.getTechnologies(crawl.crawlId);
+  const siteRegDomain = registrableDomain(crawl.domain);
 
   // 1. Static speed & weight metrics (always available, no browser required)
   const htmlBytesObs = observations.filter((o) => o.category === 'performance' && o.metric === 'html_document_bytes');
@@ -31,25 +44,43 @@ export function evaluateLocalSpeed(
       : 0;
 
   const tpScriptObs = observations.filter((o) => o.category === 'performance' && o.metric === 'third_party_script_count');
-  const avgThirdPartyScripts =
-    tpScriptObs.length > 0
-      ? Math.round(tpScriptObs.reduce((a, o) => a + Number(o.value), 0) / tpScriptObs.length)
-      : 0;
-
   const thirdPartyDomainSet = new Set<string>();
   for (const o of tpScriptObs) {
     const sample = Array.isArray(o.details?.sample) ? (o.details.sample as string[]) : [];
     for (const s of sample) {
       try {
         const host = new URL(s).hostname.replace(/^www\./, '');
-        if (host && host !== crawl.domain.replace(/^www\./, '')) {
-          thirdPartyDomainSet.add(host);
+        const reg = registrableDomain(host);
+        if (reg && reg !== siteRegDomain && !PLATFORM_CDN_DOMAINS.has(reg) && !PLATFORM_CDN_DOMAINS.has(host)) {
+          thirdPartyDomainSet.add(reg);
         }
       } catch {
         // ignore invalid URLs
       }
     }
   }
+  for (const t of technologies) {
+    if (t.isThirdParty) {
+      if (t.scriptUrl) {
+        try {
+          const reg = registrableDomain(new URL(t.scriptUrl).hostname);
+          if (reg && reg !== siteRegDomain && !PLATFORM_CDN_DOMAINS.has(reg)) {
+            thirdPartyDomainSet.add(reg);
+          }
+        } catch {
+          thirdPartyDomainSet.add(t.provider.toLowerCase());
+        }
+      } else {
+        thirdPartyDomainSet.add(t.provider.toLowerCase());
+      }
+    }
+  }
+
+  const rawAvgThirdParty =
+    tpScriptObs.length > 0
+      ? Math.round(tpScriptObs.reduce((a, o) => a + Number(o.value), 0) / tpScriptObs.length)
+      : 0;
+  const avgThirdPartyScripts = Math.max(rawAvgThirdParty, thirdPartyDomainSet.size);
 
   const cssObs = observations.filter((o) => o.category === 'performance' && o.metric === 'stylesheet_count');
   const renderBlockingCssAvg =
@@ -105,11 +136,14 @@ export function evaluateLocalSpeed(
     )
   );
 
+  const isStaleDeepScan = !measured && crawl.coverage.deeplyInspected > 0;
   const summary: LocalSpeedSummary = {
     measurementMode: measured ? 'lab_browser' : 'static_only',
     disclaimer: measured
-      ? 'Lab estimate measured locally in headless Chromium from one machine and network — not Google CrUX field data. INP requires real user interaction and is intentionally omitted.'
-      : 'Static HTML & asset measurements only. Run a Deep (with browser) scan to measure local lab LCP, CLS, TTFB, and request waterfall.',
+      ? 'Lab estimate from local headless Chromium — not Google CrUX field data. INP requires real user interaction and is omitted.'
+      : isStaleDeepScan
+        ? 'Measured on an older scan before lab vitals were captured. Re-run a deep scan to measure local LCP and CLS.'
+        : 'Static HTML and asset checks only. Run a deep scan to measure local lab LCP, CLS, and TTFB.',
     staticMetrics: {
       avgHtmlKb,
       maxHtmlKb,

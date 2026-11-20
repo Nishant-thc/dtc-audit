@@ -11,99 +11,131 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const INSIGHT_CSS = fs.readFileSync(path.join(__dirname, 'insight.css'), 'utf-8');
 const VERDICT_JS = fs.readFileSync(path.join(__dirname, 'verdict-client.js'), 'utf-8');
 
-const VERDICT_CSS = `
-.verdict-shell { max-width: 1180px; margin: 0 auto; padding: 28px 24px 64px; }
-.verdict-topbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 18px; }
-.mode-toggle { display: inline-flex; background: var(--paper); border: 1px solid var(--line); border-radius: 20px; padding: 3px; }
-.mode-toggle button { border: none; background: transparent; padding: 5px 14px; font-size: 12px; border-radius: 16px; cursor: pointer; color: var(--ink-soft); font-family: var(--font-sans); }
-.mode-toggle button.on { background: var(--ink); color: #fff; font-weight: 500; }
+const WORKING_SEO_CSS = `
+.seo-shell { max-width: 1260px; margin: 0 auto; padding: 24px 24px 64px; }
 
-.verdict-card { background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 24px 28px; margin-bottom: 20px; }
-.verdict-top { display: flex; justify-content: space-between; align-items: center; gap: 24px; flex-wrap: wrap; border-bottom: 1px solid var(--line); padding-bottom: 20px; margin-bottom: 20px; }
-.verdict-domain { font-family: var(--font-serif); font-size: 28px; font-weight: 500; margin-bottom: 6px; }
-.verdict-sentence { font-size: 15px; color: var(--ink-soft); max-width: 720px; line-height: 1.6; }
-.score-pill-big { display: flex; align-items: center; gap: 14px; }
-.score-circle { width: 78px; height: 78px; border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center; font-family: var(--font-serif); border: 4px solid var(--line); }
-.score-circle.green { border-color: var(--good); color: var(--good); background: var(--good-bg); }
-.score-circle.amber { border-color: var(--warn); color: var(--warn); background: var(--warn-bg); }
-.score-circle.red { border-color: var(--block); color: var(--block); background: var(--block-bg); }
-.score-circle.unmeasured { border-color: var(--line); color: var(--ink-faint); background: var(--bg); }
-.score-circle .num { font-size: 28px; line-height: 1; font-weight: 600; }
-.score-circle .grd { font-family: var(--font-mono); font-size: 11px; margin-top: 2px; }
+/* 1. One-line Header Strip */
+.hdr-strip { display: flex; justify-content: space-between; align-items: center; gap: 14px; flex-wrap: wrap;
+  background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 14px 18px; margin-bottom: 18px; }
+.hdr-left { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.hdr-domain { font-family: var(--font-serif); font-size: 20px; font-weight: 500; }
+.hdr-score { font-family: var(--font-mono); font-size: 12.5px; font-weight: 600; padding: 3px 10px; border-radius: 14px; }
+.hdr-score.green { background: var(--good-bg); color: var(--good); }
+.hdr-score.amber { background: var(--warn-bg); color: var(--warn); }
+.hdr-score.red { background: var(--block-bg); color: var(--block); }
+.hdr-score.unmeasured { background: var(--bg); color: var(--ink-faint); }
+.hdr-meta { font-size: 12.5px; color: var(--ink-soft); }
+.hdr-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 
-.area-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }
-.area-tile { background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; cursor: pointer; text-align: left; transition: border-color .15s, transform .15s; }
-.area-tile:hover, .area-tile.active { border-color: var(--visible); background: var(--paper); transform: translateY(-1px); }
-.area-tile .al { font-size: 12.5px; font-weight: 600; color: var(--ink); margin-bottom: 6px; }
-.area-tile .as { font-family: var(--font-serif); font-size: 26px; font-weight: 600; }
-.area-tile .as.green { color: var(--good); }
-.area-tile .as.amber { color: var(--warn); }
-.area-tile .as.red { color: var(--block); }
-.area-tile .as.unmeasured { color: var(--ink-faint); font-size: 18px; }
-.area-tile .am { font-family: var(--font-mono); font-size: 11px; color: var(--ink-faint); margin-top: 4px; }
+/* 2. Visual Summary (4 Charts) */
+.viz-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; margin-bottom: 10px; }
+.viz-card { background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; }
+.viz-title { font-family: var(--font-serif); font-size: 16px; font-weight: 500; color: var(--ink); margin-bottom: 2px; }
+.viz-sub { font-size: 11.5px; color: var(--ink-faint); font-family: var(--font-mono); margin-bottom: 12px; }
+.vbar-row { display: grid; grid-template-columns: 112px 1fr 44px; gap: 10px; align-items: center; margin-bottom: 8px; cursor: pointer; font-size: 12.5px; }
+.vbar-row:hover .vbar-lbl { color: var(--visible); }
+.vbar-lbl { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vbar-track { height: 10px; background: #EEF0F4; border-radius: 5px; overflow: hidden; }
+.vbar-fill { height: 100%; border-radius: 5px; }
+.vbar-val { font-family: var(--font-mono); font-size: 12px; text-align: right; color: var(--ink-soft); }
+.stack-track { height: 10px; background: #EEF0F4; border-radius: 5px; overflow: hidden; display: flex; }
 
-.packet-list { display: grid; gap: 14px; margin-bottom: 24px; }
-.packet-card { background: var(--paper); border: 1px solid var(--line); border-left: 4px solid var(--visible); border-radius: 10px; padding: 18px 20px; }
-.packet-card.fix_now { border-left-color: var(--block); }
-.packet-card.fix_soon { border-left-color: var(--warn); }
-.packet-card.done { opacity: .55; border-left-color: var(--good); }
-.packet-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; flex-wrap: wrap; }
-.packet-title { font-family: var(--font-serif); font-size: 18px; font-weight: 500; margin: 4px 0; }
-.packet-proof { font-size: 13.5px; color: var(--ink-soft); margin-bottom: 10px; }
-.packet-meta { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; font-size: 12px; color: var(--ink-soft); }
-.lift-badge { font-family: var(--font-mono); font-size: 12px; font-weight: 600; background: var(--good-bg); color: var(--good); padding: 3px 9px; border-radius: 12px; }
-.tier-badge { font-family: var(--font-mono); font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 10px; }
-.tier-badge.fix_now { background: var(--block-bg); color: var(--block); }
-.tier-badge.fix_soon { background: var(--warn-bg); color: var(--warn); }
-.tier-badge.nice_to_have { background: var(--visible-bg); color: var(--visible); }
-.packet-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
-.packet-drawer { margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--line); display: none; }
-.packet-drawer.open { display: block; }
-.ba-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
-.ba-box { padding: 10px 12px; border-radius: 8px; font-size: 12.5px; line-height: 1.5; }
-.ba-box.cur { background: #FDF7F6; border: 1px solid rgba(166,52,42,.2); }
-.ba-box.sug { background: #F5FBF7; border: 1px solid rgba(13,122,62,.2); }
+.sev-tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 8px; }
+.sev-tile { border: 1px solid var(--line); border-radius: 8px; padding: 12px; text-align: center; cursor: pointer; background: var(--bg); transition: border-color .15s, transform .15s; }
+.sev-tile:hover { transform: translateY(-1px); }
+.sev-tile.critical .n { color: var(--block); }
+.sev-tile.warning .n { color: var(--warn); }
+.sev-tile.minor .n { color: var(--visible); }
+.sev-tile.on { background: var(--paper); border-width: 2px; border-color: var(--ink); }
+.sev-tile .n { font-family: var(--font-serif); font-size: 28px; line-height: 1.1; }
+.sev-tile .l { font-size: 11.5px; font-family: var(--font-mono); color: var(--ink-soft); margin-top: 2px; }
+.chart-hint { font-size: 11.5px; color: var(--ink-faint); }
 
-.snapshot-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; }
-.snap-item { background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; }
-.snap-item .sl { font-size: 11px; font-family: var(--font-mono); color: var(--ink-faint); text-transform: uppercase; }
-.snap-item .sv { font-family: var(--font-serif); font-size: 18px; margin-top: 3px; }
-.snap-item .sd { font-size: 11.5px; color: var(--ink-soft); margin-top: 2px; }
+.hm-table { width: 100%; border-collapse: collapse; font-size: 11.5px; font-family: var(--font-mono); }
+.hm-table th { font-weight: 500; color: var(--ink-soft); padding: 4px 6px; text-align: center; }
+.hm-table td { padding: 6px; text-align: center; border: 2px solid var(--paper); border-radius: 4px; cursor: pointer; }
+.hm-table td.hm-row-lbl { text-align: left; font-family: var(--font-sans); color: var(--ink); background: transparent !important; cursor: default; font-weight: 500; }
 
-.check-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; padding: 12px 0; border-bottom: 1px solid var(--line); font-size: 13.5px; }
-.check-row:last-child { border-bottom: none; }
-.status-chip { font-family: var(--font-mono); font-size: 11px; padding: 2px 8px; border-radius: 10px; white-space: nowrap; }
-.status-chip.pass { background: var(--good-bg); color: var(--good); }
-.status-chip.fail { background: var(--block-bg); color: var(--block); }
-.status-chip.not_measured { background: var(--bg); color: var(--ink-faint); border: 1px solid var(--line); }
+.cov-line { font-size: 12px; color: var(--ink-soft); font-family: var(--font-mono); margin-bottom: 20px; padding: 8px 12px; background: var(--paper); border: 1px solid var(--line); border-radius: 8px; }
 
-.specialist-only { display: none; }
-body.specialist-mode .specialist-only { display: block; }
-@media (max-width: 960px) { .area-grid { grid-template-columns: 1fr 1fr; } .ba-grid { grid-template-columns: 1fr; } }
+/* 3. Issues & Pages Tables */
+.tbl-bar { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+.tbl-h2 { font-family: var(--font-serif); font-size: 20px; font-weight: 500; margin: 0; }
+.tbl-filters { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.tbl-filters select, .tbl-filters input { font-size: 12.5px; padding: 5px 10px; }
+
+.sev-badge { display: inline-block; font-family: var(--font-mono); font-size: 11px; padding: 2px 8px; border-radius: 10px; white-space: nowrap; font-weight: 500; }
+.sev-badge.critical { background: var(--block-bg); color: var(--block); }
+.sev-badge.warning { background: var(--warn-bg); color: var(--warn); }
+.sev-badge.minor { background: var(--visible-bg); color: var(--visible); }
+.sev-badge.good { background: var(--good-bg); color: var(--good); }
+
+.issue-row { cursor: pointer; transition: background .1s; }
+.issue-row:hover { background: #F7F8FA; }
+.issue-row.open { background: #F4F6FB; }
+.issue-row.fixed-row { opacity: .55; }
+
+.pg-cell { display: flex; align-items: center; gap: 8px; }
+.mini-tr { width: 46px; height: 6px; background: #E9EBF0; border-radius: 4px; overflow: hidden; display: inline-block; }
+.mini-fl { display: block; height: 100%; }
+.mini-fl.critical { background: var(--block); }
+.mini-fl.warning { background: var(--warn); }
+.mini-fl.minor { background: var(--visible); }
+
+/* Inline Expanded Row */
+.detail-row td { background: #FAFBFC; padding: 0 !important; border-bottom: 2px solid var(--line); }
+.detail-box { padding: 16px 20px; }
+.detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.detail-head { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-soft); margin-bottom: 8px; font-weight: 600; }
+.detail-urls { display: grid; gap: 5px; max-height: 220px; overflow-y: auto; }
+.du-row { display: flex; justify-content: space-between; gap: 10px; font-size: 12px; padding: 4px 8px; background: var(--paper); border: 1px solid var(--line); border-radius: 6px; }
+.du-val { color: var(--ink-soft); font-family: var(--font-mono); font-size: 11px; text-align: right; }
+.pass-drop, .why-drop { margin-top: 10px; font-size: 12.5px; }
+.pass-drop summary, .why-drop summary { cursor: pointer; color: var(--visible); font-weight: 500; }
+.why-body { margin-top: 6px; padding: 10px 12px; background: var(--paper); border: 1px solid var(--line); border-radius: 6px; font-size: 12.5px; color: var(--ink-soft); line-height: 1.55; }
+.fix-ol { margin: 0 0 10px 18px; font-size: 13px; line-height: 1.6; }
+.ba-mini { display: grid; gap: 6px; font-size: 12px; margin-bottom: 10px; }
+.ba-c { padding: 6px 10px; background: #FDF7F6; border: 1px solid rgba(166,52,42,.2); border-radius: 6px; }
+.ba-s { padding: 6px 10px; background: #F5FBF7; border: 1px solid rgba(13,122,62,.2); border-radius: 6px; }
+
+/* URL Detail Slide-over Panel */
+.url-backdrop { position: fixed; inset: 0; background: rgba(13,17,23,.45); z-index: 200; display: none; justify-content: flex-end; }
+.url-backdrop.open { display: flex; }
+.url-panel { width: 540px; max-width: 95vw; background: var(--paper); height: 100%; overflow-y: auto; padding: 22px 24px; box-shadow: -8px 0 32px rgba(0,0,0,.15); }
+.url-chk { padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; margin-bottom: 8px; font-size: 12.5px; }
+.url-chk.fail { border-left: 3px solid var(--block); background: #FDF7F6; }
+.url-chk.pass { border-left: 3px solid var(--good); background: var(--paper); }
+.uc-v { font-family: var(--font-mono); font-size: 11.5px; color: var(--ink-soft); margin-top: 4px; }
+.uc-a { font-size: 12px; color: var(--ink); margin-top: 3px; }
+
+.bf-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 13px; }
+.bf-row:last-child { border-bottom: none; }
+
+@media (max-width: 960px) { .viz-grid, .detail-grid { grid-template-columns: 1fr; } }
 `;
 
 export function renderStoreFirstHomePage(crawls: CrawlRecord[]): string {
   const quickPicks = ['row.gymshark.com', 'allbirds.com', 'tentree.com'];
 
-  return `${renderSharedHead('Ecommerce Marketing Intelligence Suite').replace('</head>', `<style>${INSIGHT_CSS}\n${VERDICT_CSS}</style>\n</head>`)}
+  return `${renderSharedHead('Ecommerce Marketing Intelligence Suite').replace('</head>', `<style>${INSIGHT_CSS}\n${WORKING_SEO_CSS}</style>\n</head>`)}
 <body>
   ${renderGlobalTopHeader('/')}
 
-  <section class="landing-hero" id="landing-hero-box">
+  <section class="landing-hero">
     <div class="landing-inner">
-      <div class="landing-badge"><span class="landing-badge-dot"></span>Free · local measurement · no AI guesswork · no external APIs</div>
-      <h1 class="landing-headline">One clear <span class="landing-headline-accent">store health verdict</span> — and the exact template fixes</h1>
-      <p class="landing-sub">Enter your ecommerce store address. Silo SEO inspects your public pages across Search Visibility, AI Readiness, Product &amp; Collection Quality, Site Health &amp; Speed, and Conversion &amp; Trust — and hands your team a short, prioritised fix list.</p>
+      <div class="landing-badge"><span class="landing-badge-dot"></span>Free · public data only · local speed &amp; AI readiness checks</div>
+      <h1 class="landing-headline">Find SEO, catalogue, and speed problems — <span class="landing-headline-accent">and where to fix them</span></h1>
+      <p class="landing-sub">Enter your ecommerce store domain to inspect products, collections, blog posts, sitemaps, schema, and speed.</p>
 
       <form id="verdict-scan-form">
         <div class="landing-input-wrap">
           <input type="text" class="landing-input" id="verdict-domain-input" placeholder="yourstore.com" autocomplete="url" />
           <select class="landing-tool-select" id="verdict-scan-mode" aria-label="Scan mode">
-            <option value="B" selected>Standard scan (fast, ~15s)</option>
-            <option value="C">Deep scan (with local browser vitals)</option>
-            <option value="A">Quick scan (URL discovery only)</option>
+            <option value="B" selected>Standard scan</option>
+            <option value="C">Deep scan (with browser vitals)</option>
+            <option value="A">Quick scan (URL discovery)</option>
           </select>
-          <button type="submit" class="landing-btn">Audit my store →</button>
+          <button type="submit" class="landing-btn">Scan store →</button>
         </div>
       </form>
       <div class="landing-trust-bar">
@@ -113,104 +145,55 @@ export function renderStoreFirstHomePage(crawls: CrawlRecord[]): string {
     </div>
   </section>
 
-  <main class="verdict-shell">
-    <!-- Progress bar -->
+  <main class="seo-shell">
     <section class="progress-panel" id="verdict-progress" style="display:none;">
       <div class="progress-title">
-        <div style="display:flex;align-items:center;gap:8px;"><span style="width:8px;height:8px;border-radius:50%;background:var(--visible);display:inline-block;"></span><span id="verdict-progress-title">Auditing store…</span></div>
+        <div style="display:flex;align-items:center;gap:8px;"><span style="width:8px;height:8px;border-radius:50%;background:var(--visible);display:inline-block;"></span><span id="verdict-progress-title">Scanning store…</span></div>
       </div>
-      <div class="progress-step" id="verdict-progress-step">1/4 Reading robots.txt and XML sitemaps…</div>
+      <div class="progress-step" id="verdict-progress-step">Checking robots.txt and XML sitemaps…</div>
       <div class="progress-bar-track"><div class="progress-bar-fill"></div></div>
     </section>
 
-    <!-- STORE VERDICT WORKSPACE (Layers 0 -> 3) -->
     <div id="verdict-workspace" style="display:none;">
-      <div class="verdict-topbar">
-        <div class="mode-toggle" role="group" aria-label="View density">
-          <button type="button" id="btn-owner-view" class="on" onclick="setViewMode('owner')">Owner view</button>
-          <button type="button" id="btn-specialist-view" onclick="setViewMode('specialist')">Specialist view</button>
-        </div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-          <button type="button" class="btn" onclick="openComparePrompt()">Compare to another store</button>
-          <a class="btn" id="verdict-history-link" href="/tools/change-tracker">History &amp; diffs</a>
-          <a class="btn btn-primary" id="verdict-pdf-link" href="#" target="_blank">🖨 Client report (PDF)</a>
-        </div>
-      </div>
-
-      <!-- LAYER 0: THE 5-SECOND VERDICT -->
-      <section class="verdict-card" id="layer-0-verdict"></section>
-
-      <!-- LAYER 1: FIX FIRST (MAX 5 TEMPLATE-GROUPED FIX PACKETS) -->
-      <section id="layer-1-fix-first" style="margin-bottom:24px;"></section>
-
-      <!-- LAYER 2: SELECTED AREA DEEP-DIVE (PASSED / FAILED / NOT MEASURED) -->
-      <section id="layer-2-area" style="margin-bottom:24px;"></section>
-
-      <!-- OPPORTUNITIES & STORE SNAPSHOT FACTS -->
-      <section id="layer-opportunities-facts" style="margin-bottom:24px;"></section>
-
-      <!-- LAYER 3: EVIDENCE DRAWER & SPECIALIST MODULAR ENGINES -->
-      <details class="ex-panel" id="layer-3-evidence">
-        <summary>
-          <div>
-            <h3>Evidence drawer &amp; 17 modular audit tools</h3>
-            <div class="ex-desc">Rule IDs, shared denominators, crawl coverage, CSV exports, and individual specialist consoles</div>
-          </div>
-          <span class="ex-count">Specialist layer</span>
-        </summary>
-        <div style="padding:0 18px 18px;" id="layer-3-body"></div>
-      </details>
-
+      <section class="hdr-strip" id="sec-header-strip"></section>
+      <section id="sec-visual-summary"></section>
+      <section id="sec-issues-table" style="margin-bottom:22px;"></section>
+      <section id="sec-pages-table" style="margin-bottom:22px;"></section>
+      <section id="sec-below-fold"></section>
       <div class="standing-banner" style="margin-top:18px;">
         <strong>Honesty &amp; coverage statement:</strong> ${escapeHtml(STANDING_POLICY_STATEMENT)}
       </div>
     </div>
 
-    <!-- RECENT SAVED SCANS (Shown before an audit runs) -->
     <div id="pre-scan-section">
       ${
         crawls.length > 0
-          ? `<section class="panel"><div class="panel-head"><h3>Recent store audits</h3><a href="/coverage" class="btn">All saved scans</a></div><div class="panel-body">
+          ? `<section class="panel"><div class="panel-head"><h3>Recent store scans</h3><a href="/coverage" class="btn">All saved scans</a></div><div class="panel-body">
           ${crawls
             .slice(0, 6)
             .map(
               (c) => `<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--line);font-size:13.5px;">
             <div><strong style="font-family:var(--font-serif);font-size:16px;">${escapeHtml(c.domain)}</strong>
-            <span style="color:var(--ink-faint);margin-left:8px;">${escapeHtml(c.platform)} · ${c.coverage.extracted} pages inspected · ${c.coverage.discovered} URLs discovered</span></div>
-            <button type="button" class="btn btn-primary" onclick="loadSavedVerdict('${escapeHtml(c.crawlId)}')">Open verdict →</button></div>`
+            <span style="color:var(--ink-faint);margin-left:8px;">${escapeHtml(c.platform)} · ${c.coverage.extracted} pages checked · ${c.coverage.discovered} URLs found</span></div>
+            <button type="button" class="btn btn-primary" onclick="loadSavedVerdict('${escapeHtml(c.crawlId)}')">Open report →</button></div>`
             )
             .join('')}
         </div></section>`
           : ''
       }
-
-      <details class="ex-panel" style="margin-top:18px;">
-        <summary>
-          <div>
-            <h3>Browse individual specialist engines (17 modular tools)</h3>
-            <div class="ex-desc">Prefer to jump straight into one module (e.g., Schema, Catalogue, Faceted Nav, Competitor Comparison)?</div>
-          </div>
-          <span class="ex-count">17 tools</span>
-        </summary>
-        <div style="padding:0 18px 18px; display:grid; grid-template-columns:repeat(auto-fill, minmax(260px, 1fr)); gap:10px;">
-          ${TOOL_REGISTRY.map((t) => {
-            const ux = TOOL_UX_GUIDE[t.manifest.slug];
-            return `<a href="/tools/${t.manifest.slug}" style="display:block;padding:12px 14px;background:var(--bg);border:1px solid var(--line);border-radius:8px;text-decoration:none;color:var(--ink);">
-              <div style="font-family:var(--font-mono);font-size:10.5px;color:var(--visible);">${escapeHtml(ux?.shortTitle ?? t.manifest.name)}</div>
-              <div style="font-size:12.5px;color:var(--ink-soft);margin-top:4px;line-height:1.45;">${escapeHtml(ux?.businessQuestion ?? t.manifest.oneLinePromise)}</div>
-            </a>`;
-          }).join('')}
-        </div>
-      </details>
     </div>
   </main>
+
+  <!-- Per-URL Side Panel -->
+  <div class="url-backdrop" id="url-drawer-backdrop" onclick="if(event.target===this) closeUrlPanel()">
+    <div class="url-panel" id="url-drawer-content"></div>
+  </div>
 
   <script>
     window.__SILO_VERDICT_TOOLS__ = ${JSON.stringify(
       TOOL_REGISTRY.map((t) => ({
         slug: t.manifest.slug,
         name: TOOL_UX_GUIDE[t.manifest.slug]?.shortTitle ?? t.manifest.name,
-        q: TOOL_UX_GUIDE[t.manifest.slug]?.businessQuestion ?? t.manifest.oneLinePromise,
       }))
     ).replace(/</g, '\\u003c')};
   </script>

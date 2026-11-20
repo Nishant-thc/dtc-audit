@@ -348,16 +348,24 @@ export function evaluateAiReadiness(
     finding: null,
   });
 
-  // AI-004: Entity consistency (Organization schema + sameAs brand links)
-  const entityPassed = Boolean(orgBrandName && sameAsCount > 0 && brandsAgree !== false);
-  const entityTotal = 2;
-  const entityPassCount = (orgBrandName ? 1 : 0) + (sameAsCount > 0 ? 1 : 0);
+  // AI-004: Entity consistency (Organization schema + sameAs brand links + brand agreement)
+  const entitySignals: Array<{ ok: boolean; name: string }> = [
+    { ok: Boolean(orgBrandName), name: 'Organization schema name' },
+    { ok: sameAsCount > 0, name: 'sameAs social/identity links' },
+  ];
+  if (brandsAgree !== null) {
+    entitySignals.push({ ok: brandsAgree, name: 'Organization and Product brand names match' });
+  }
+  const entityTotal = entitySignals.length;
+  const entityPassCount = entitySignals.filter((s) => s.ok).length;
+  const entityFailedCount = entityTotal - entityPassCount;
+  const entityPassed = entityFailedCount === 0;
   ruleResults.push({
     ruleId: 'AI-004',
     toolId: 'ai-readiness',
     areaId: 'ai_readiness',
     title: 'Organization brand schema & sameAs identity links',
-    plainTitle: 'Organization schema is missing or lacks sameAs social/Wikipedia identity links',
+    plainTitle: 'Organization schema incomplete or brand mismatch',
     kind: 'issue',
     status: entityPassed ? 'pass' : 'fail',
     actionTier: 'fix_soon',
@@ -365,13 +373,13 @@ export function evaluateAiReadiness(
     effortMinutes: 20,
     owner: 'Theme / Web Developer',
     applicableCount: entityTotal,
-    affectedCount: entityTotal - entityPassCount,
+    affectedCount: entityFailedCount,
     passedCount: entityPassCount,
-    passRate: entityPassCount / entityTotal,
+    passRate: entityTotal > 0 ? entityPassCount / entityTotal : 1,
     denominatorNoun: 'brand identity signals',
     confidenceTag: 'verified',
     affectedUrls: entityPassed ? [] : [homeUrl],
-    templateGroupCounts: { Homepage: { affected: entityTotal - entityPassCount, total: entityTotal } },
+    templateGroupCounts: { Homepage: { affected: entityFailedCount, total: entityTotal } },
     finding: null,
   });
 
