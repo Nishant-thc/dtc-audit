@@ -6,6 +6,7 @@ import { STANDING_POLICY_STATEMENT } from '../engine/report-service.ts';
 import type { StandaloneToolModule } from '../tools/types.ts';
 import type { CrawlRecord } from '../types/entities.ts';
 import { renderSharedHead, renderGlobalTopHeader, escapeHtml } from './templates.ts';
+import { WORKING_SEO_CSS } from './verdict-page.ts';
 import { TOOL_UX_GUIDE, RULE_PLAYBOOK, HUMAN_COLUMN_LABELS, JARGON_GLOSSARY } from './playbook.ts';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -22,7 +23,7 @@ const GOAL_GROUPS: Array<{ key: string; title: string; sub: string }> = [
 const QUICK_PICKS = ['row.gymshark.com', 'allbirds.com', 'tentree.com'];
 
 function head(title: string): string {
-  return renderSharedHead(title).replace('</head>', `<style>${INSIGHT_CSS}</style>\n</head>`);
+  return renderSharedHead(title).replace('</head>', `<style>${INSIGHT_CSS}\n${WORKING_SEO_CSS}</style>\n</head>`);
 }
 
 function safeJson(value: unknown): string {
@@ -198,17 +199,12 @@ export function renderStandaloneToolPage(tool: StandaloneToolModule, crawls: Cra
     <aside class="rail">
       <div class="rail-brand">
         <div class="mark">${escapeHtml(ux?.shortTitle ?? m.name)}</div>
-        <div class="sub">store audit console</div>
+        <div class="sub">specialist lens</div>
       </div>
-      <div class="rail-section-label">Your report</div>
-      <nav class="rail-nav" id="ux-tab-nav" style="display:none;">
-        <button type="button" class="rail-item rail-item-active" data-tab="tab-insights" onclick="uxSwitchTab('tab-insights')"><span class="dot"></span>📊 Insights &amp; visuals</button>
-        <button type="button" class="rail-item" data-tab="tab-actions" onclick="uxSwitchTab('tab-actions')"><span class="dot"></span>🛠️ Action plan <span id="nav-fix-count" class="mono" style="margin-left:auto;font-size:10.5px;"></span></button>
-        <button type="button" class="rail-item" data-tab="tab-checklist" onclick="uxSwitchTab('tab-checklist')"><span class="dot"></span>✅ Correct vs. broken</button>
-        <button type="button" class="rail-item" data-tab="tab-data" onclick="uxSwitchTab('tab-data')"><span class="dot"></span>🔍 Page data explorer</button>
-        <button type="button" class="rail-item" data-tab="tab-guide" onclick="uxSwitchTab('tab-guide')"><span class="dot"></span>📖 Guide &amp; glossary</button>
+      <nav class="rail-nav" style="margin-bottom:8px;">
+        <a href="/" id="rail-back-summary" class="rail-item" style="color:#9DB4FF;font-weight:500;"><span class="dot" style="background:#9DB4FF;"></span>← Store Summary</a>
       </nav>
-      <div class="rail-section-label" style="margin-top:14px;">Other tools (same scan)</div>
+      <div class="rail-section-label">Switch tool (same scan)</div>
       <nav class="rail-nav">${railGroups}</nav>
       <div class="rail-foot" id="rail-crawl-footer">No scan loaded yet<br/>Enter your store address to begin</div>
     </aside>
@@ -219,14 +215,13 @@ export function renderStandaloneToolPage(tool: StandaloneToolModule, crawls: Cra
           <div class="domain" id="topbar-domain-title">${escapeHtml(ux?.shortTitle ?? m.name)}</div>
           <div class="scan-meta" id="topbar-scan-meta">
             <span>${escapeHtml(m.name)}</span>
-            <a href="/" class="mono" style="color:var(--visible);text-decoration:underline;font-size:11.5px;">← All tools</a>
+            <a href="/" class="mono" style="color:var(--visible);text-decoration:underline;font-size:11.5px;">← Store Summary</a>
           </div>
         </div>
         <div class="topbar-actions">
           <button type="button" class="btn" onclick="toggleSetupPanel()">Configure / Re-scan</button>
-          <button type="button" class="btn" id="export-md-btn" style="display:none;" onclick="exportMarkdownDossier()">📄 Action plan (.md)</button>
-          <a class="btn" id="export-json-btn" style="display:none;" href="#" target="_blank">🗂 Raw data (.json)</a>
-          <a class="btn btn-primary" id="export-report-btn" style="display:none;" href="#" target="_blank">🖨 Client report (PDF)</a>
+          <a class="btn" id="export-json-btn" style="display:none;" href="#" target="_blank">Raw JSON</a>
+          <a class="btn btn-primary" id="export-report-btn" style="display:none;" href="#" target="_blank">Client PDF</a>
         </div>
       </header>
 
@@ -237,13 +232,13 @@ export function renderStandaloneToolPage(tool: StandaloneToolModule, crawls: Cra
           <form id="run-tool-form">
             <div class="form-grid">
               <div style="grid-column: span 4;">
-                <label for="domainInput">Your store's website address</label>
+                <label for="domainInput">Store website address</label>
                 <input type="text" id="domainInput" name="domainInput" placeholder="yourstore.com" value="" />
               </div>
               ${
                 m.slug === 'competitor-comparison'
                   ? `<div style="grid-column: span 4;">
-                <label for="competitorDomain">Competitor's website address (we'll scan it too)</label>
+                <label for="competitorDomain">Competitor website address</label>
                 <input type="text" id="competitorDomain" name="competitorDomain" placeholder="competitor.com" value="" />
               </div>`
                   : ''
@@ -251,34 +246,28 @@ export function renderStandaloneToolPage(tool: StandaloneToolModule, crawls: Cra
             </div>
             <div class="quick-picks"><span>Try:</span>${QUICK_PICKS.map((d) => `<button type="button" class="quick-chip" onclick="uxQuickPick('${d}')">${d}</button>`).join('')}</div>
             <details class="advanced">
-              <summary>Advanced settings (scan size, reuse a saved scan)</summary>
+              <summary>Scan depth &amp; local saved scans</summary>
               <div class="form-grid" style="margin-top:12px;">
                 <div style="grid-column: span 4;">
-                  <label for="existingCrawlSelect">Reuse a saved scan (instant, no new requests)</label>
+                  <label for="existingCrawlSelect">Reuse a scan from this browser (0 requests)</label>
                   <select id="existingCrawlSelect" name="crawlId">
                     <option value="">— Run a fresh scan —</option>
-                    ${crawls
-                      .map(
-                        (c) =>
-                          `<option value="${escapeHtml(c.crawlId)}">${escapeHtml(c.domain)} · ${escapeHtml(c.platform)} · ${c.coverage.extracted} pages read</option>`
-                      )
-                      .join('')}
                   </select>
                 </div>
                 <div>
                   <label for="maxDiscoveryUrls">Max URLs to discover</label>
-                  <input type="number" id="maxDiscoveryUrls" value="2500" min="50" max="50000" />
+                  <input type="number" id="maxDiscoveryUrls" value="5000" min="50" max="50000" />
                 </div>
                 <div>
-                  <label for="maxLightweightPages">Pages to read in full</label>
-                  <input type="number" id="maxLightweightPages" value="25" min="5" max="5000" />
+                  <label for="maxLightweightPages">Pages to check in full</label>
+                  <input type="number" id="maxLightweightPages" value="${defaultLevel === 'C' ? '150' : '50'}" min="5" max="5000" />
                 </div>
                 <div>
-                  <label for="maxLevel">Scan depth</label>
+                  <label for="maxLevel">Scan mode</label>
                   <select id="maxLevel">
-                    <option value="A" ${defaultLevel === 'A' ? 'selected' : ''}>Quick (page list only)</option>
-                    <option value="B" ${defaultLevel === 'B' ? 'selected' : ''}>Standard (read page content)</option>
-                    <option value="C" ${defaultLevel === 'C' ? 'selected' : ''}>Deep (+ real browser on samples)</option>
+                    <option value="A" ${defaultLevel === 'A' ? 'selected' : ''}>Quick (15 pages + sitemap)</option>
+                    <option value="B" ${defaultLevel === 'B' ? 'selected' : ''}>Standard (50 pages)</option>
+                    <option value="C" ${defaultLevel === 'C' ? 'selected' : ''}>Deep (150 pages + browser vitals)</option>
                   </select>
                 </div>
                 <div>
@@ -291,30 +280,27 @@ export function renderStandaloneToolPage(tool: StandaloneToolModule, crawls: Cra
               </div>
             </details>
             <div style="margin-top:18px;">
-              <button type="submit" class="btn btn-blue" id="run-btn" style="padding:11px 22px;font-size:14px;">Run audit →</button>
+              <button type="submit" class="btn btn-blue" id="run-btn" style="padding:11px 22px;font-size:14px;">Run scan →</button>
             </div>
           </form>
         </section>
 
         <section class="progress-panel" id="run-screen" style="display:none;">
           <div class="progress-title">
-            <div style="display:flex;align-items:center;gap:8px;"><span style="width:8px;height:8px;border-radius:50%;background:var(--visible);display:inline-block;"></span><span>Scanning your store</span></div>
-            <div style="display:flex;gap:6px;">
-              <button type="button" class="btn" id="pause-btn" style="padding:4px 10px;font-size:11px;">Pause</button>
-              <button type="button" class="btn" id="resume-btn" style="padding:4px 10px;font-size:11px;">Resume</button>
-              <button type="button" class="btn" id="cancel-btn" style="padding:4px 10px;font-size:11px;color:var(--block);">Cancel</button>
-            </div>
+            <div style="display:flex;align-items:center;gap:8px;"><span style="width:8px;height:8px;border-radius:50%;background:var(--visible);display:inline-block;"></span><span>Scanning store</span></div>
           </div>
           <div class="progress-step" id="run-status-text">Starting…</div>
           <div class="progress-bar-track" id="run-progress-track"><div class="progress-bar-fill"></div></div>
         </section>
 
         <div id="results-screen" style="display:none;">
-          <div class="ux-tab active" id="tab-insights"></div>
-          <div class="ux-tab" id="tab-actions"></div>
-          <div class="ux-tab" id="tab-checklist"></div>
-          <div class="ux-tab" id="tab-data"></div>
-          <div class="ux-tab" id="tab-guide"></div>
+          <section class="hdr-strip" id="tool-header-strip"></section>
+          <section id="tool-visual-summary"></section>
+          <section id="tool-issues-table"></section>
+          <section id="tool-data-tables"></section>
+          <div class="standing-banner" style="margin-top:18px;">
+            <strong>Honesty &amp; coverage statement:</strong> ${escapeHtml(STANDING_POLICY_STATEMENT)}
+          </div>
         </div>
       </main>
     </div>

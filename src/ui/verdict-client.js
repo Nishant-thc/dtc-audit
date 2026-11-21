@@ -487,8 +487,76 @@
     a.click();
   };
 
+  /* ---------------- Local-Only Recent Scans (Browser localStorage) ---------------- */
+  const RECENT_KEY = 'silo_recent_scans_v1';
+
+  function loadLocalScans() {
+    try {
+      const raw = localStorage.getItem(RECENT_KEY);
+      const parsed = raw ? JSON.parse(raw) : [];
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function saveLocalScan(v) {
+    try {
+      const list = loadLocalScans().filter(function (x) {
+        return x.crawlId !== v.crawl.crawlId && x.domain !== v.crawl.domain;
+      });
+      list.unshift({
+        crawlId: v.crawl.crawlId,
+        domain: v.crawl.domain,
+        platform: v.crawl.platform,
+        overallScore: v.overallScore,
+        overallGrade: v.overallGrade,
+        overallBand: v.overallBand,
+        pagesChecked: v.denominators.okHtmlPages,
+        urlsFound: v.denominators.discoveredUrls,
+        scannedAt: v.generatedAt,
+      });
+      localStorage.setItem(RECENT_KEY, JSON.stringify(list.slice(0, 10)));
+    } catch (e) {
+      // ignore storage quota errors
+    }
+  }
+
+  window.clearLocalScans = function () {
+    localStorage.removeItem(RECENT_KEY);
+    renderLocalRecentScans();
+  };
+
+  function renderLocalRecentScans() {
+    const box = document.getElementById('local-recent-scans');
+    if (!box) return;
+    const list = loadLocalScans();
+    if (list.length === 0) {
+      box.innerHTML = '';
+      return;
+    }
+    box.innerHTML =
+      '<section class="panel"><div class="panel-head"><div><h3>Your recent scans</h3><span class="verified">Stored locally in this browser only</span></div>' +
+      '<button type="button" class="btn" onclick="clearLocalScans()">Clear history</button></div><div class="panel-body">' +
+      list.map(function (c) {
+        const dt = c.scannedAt ? new Date(c.scannedAt).toLocaleString(undefined, { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
+        return (
+          '<div class="bf-row">' +
+            '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">' +
+              '<strong style="font-family:var(--font-serif);font-size:16px;">' + esc(c.domain) + '</strong>' +
+              (c.overallScore != null ? '<span class="hdr-score ' + esc(c.overallBand || 'amber') + '">' + c.overallScore + ' (' + esc(c.overallGrade) + ')</span>' : '') +
+              '<span style="color:var(--ink-faint);font-size:12.5px;">' + esc(c.platform) + ' · ' + c.pagesChecked + ' pages checked of ' + Number(c.urlsFound || 0).toLocaleString() + ' · ' + esc(dt) + '</span>' +
+            '</div>' +
+            '<button type="button" class="btn btn-primary" onclick="loadSavedVerdict(\'' + esc(c.crawlId) + '\')">Open report →</button>' +
+          '</div>'
+        );
+      }).join('') +
+      '</div></section>';
+  }
+
   function renderAll(v) {
     activeReport = v;
+    saveLocalScan(v);
     document.getElementById('pre-scan-section').style.display = 'none';
     document.getElementById('verdict-workspace').style.display = 'block';
     renderHeaderAndVisuals(v);
@@ -542,6 +610,7 @@
   }
 
   (function checkUrlParams() {
+    renderLocalRecentScans();
     const p = new URLSearchParams(window.location.search);
     if (p.get('crawlId')) window.loadSavedVerdict(p.get('crawlId'));
     else if (p.get('url') && p.get('autoScan') === 'true') window.runVerdictFor(p.get('url'));

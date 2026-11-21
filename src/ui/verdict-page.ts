@@ -11,7 +11,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const INSIGHT_CSS = fs.readFileSync(path.join(__dirname, 'insight.css'), 'utf-8');
 const VERDICT_JS = fs.readFileSync(path.join(__dirname, 'verdict-client.js'), 'utf-8');
 
-const WORKING_SEO_CSS = `
+export const WORKING_SEO_CSS = `
 .seo-shell { max-width: 1260px; margin: 0 auto; padding: 24px 24px 64px; }
 
 /* 1. One-line Header Strip */
@@ -131,9 +131,9 @@ export function renderStoreFirstHomePage(crawls: CrawlRecord[]): string {
         <div class="landing-input-wrap">
           <input type="text" class="landing-input" id="verdict-domain-input" placeholder="yourstore.com" autocomplete="url" />
           <select class="landing-tool-select" id="verdict-scan-mode" aria-label="Scan mode">
-            <option value="B" selected>Standard scan</option>
-            <option value="C">Deep scan (with browser vitals)</option>
-            <option value="A">Quick scan (URL discovery)</option>
+            <option value="B" selected>Standard scan (50 pages)</option>
+            <option value="C">Deep scan (150 pages + browser vitals)</option>
+            <option value="A">Quick scan (15 pages + sitemap)</option>
           </select>
           <button type="submit" class="landing-btn">Scan store →</button>
         </div>
@@ -166,21 +166,7 @@ export function renderStoreFirstHomePage(crawls: CrawlRecord[]): string {
     </div>
 
     <div id="pre-scan-section">
-      ${
-        crawls.length > 0
-          ? `<section class="panel"><div class="panel-head"><h3>Recent store scans</h3><a href="/coverage" class="btn">All saved scans</a></div><div class="panel-body">
-          ${crawls
-            .slice(0, 6)
-            .map(
-              (c) => `<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--line);font-size:13.5px;">
-            <div><strong style="font-family:var(--font-serif);font-size:16px;">${escapeHtml(c.domain)}</strong>
-            <span style="color:var(--ink-faint);margin-left:8px;">${escapeHtml(c.platform)} · ${c.coverage.extracted} pages checked · ${c.coverage.discovered} URLs found</span></div>
-            <button type="button" class="btn btn-primary" onclick="loadSavedVerdict('${escapeHtml(c.crawlId)}')">Open report →</button></div>`
-            )
-            .join('')}
-        </div></section>`
-          : ''
-      }
+      <div id="local-recent-scans"></div>
     </div>
   </main>
 

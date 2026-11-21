@@ -48,11 +48,33 @@ export function createAppServer(db = new SharedDatabase(), customFetcher?: Custo
             return;
           }
           const reqLevel = (body.maxLevel === 'A' || body.maxLevel === 'C' ? body.maxLevel : 'B') as 'A' | 'B' | 'C';
+          const levelBudget =
+            reqLevel === 'C'
+              ? {
+                  maxLevel: 'C' as const,
+                  maxDiscoveryUrls: 10000,
+                  maxLightweightPages: 150,
+                  maxDeepProductPages: 8,
+                  maxDeepCollectionPages: 5,
+                  maxDeepContentPages: 4,
+                  maxBrowserPerfPages: 5,
+                }
+              : reqLevel === 'A'
+                ? {
+                    maxLevel: 'A' as const,
+                    maxDiscoveryUrls: 5000,
+                    maxLightweightPages: 15,
+                  }
+                : {
+                    maxLevel: 'B' as const,
+                    maxDiscoveryUrls: 5000,
+                    maxLightweightPages: 50,
+                  };
           const ensured = await jobManager.ensureCrawl({
             domainInput,
             requiredLevel: reqLevel,
             forceRecrawl: Boolean(body.forceRecrawl),
-            budget: { maxLevel: reqLevel, ...(body.budget ?? {}) },
+            budget: { ...levelBudget, ...(body.budget ?? {}) },
           });
           crawl = ensured.crawl;
         }
@@ -191,8 +213,32 @@ export function createAppServer(db = new SharedDatabase(), customFetcher?: Custo
         }
 
         const result = tool.analyze(db, crawl, reusedExisting);
+        const verdict = computeStoreVerdict(db, crawl);
+        const ownedSet = new Set(
+          tool.rules.length > 0 ? tool.rules.map((r) => r.ruleId) : tool.manifest.ownedRuleIds
+        );
+        const isAll = tool.manifest.slug === 'opportunity-dashboard' || ownedSet.size === 0;
+        const allIssueRows = (verdict.issueRows ?? []) as Array<{ ruleId: string }>;
+        const toolIssueRows = isAll ? allIssueRows : allIssueRows.filter((r) => ownedSet.has(r.ruleId));
+        const allRuleRes = verdict.areas.flatMap((a) => a.ruleResults);
+        const toolRuleRes = isAll ? allRuleRes : allRuleRes.filter((r) => ownedSet.has(r.ruleId));
+
         res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify(result));
+        res.end(
+          JSON.stringify({
+            ...result,
+            workingView: {
+              overallScore: verdict.overallScore,
+              overallGrade: verdict.overallGrade,
+              overallBand: verdict.overallBand,
+              denominators: verdict.denominators,
+              issueRows: toolIssueRows,
+              pageRows: verdict.pageRows ?? [],
+              passedChecks: toolRuleRes.filter((r) => r.kind === 'issue' && r.status === 'pass'),
+              notMeasuredChecks: toolRuleRes.filter((r) => r.status === 'not_measured'),
+            },
+          })
+        );
         return;
       }
 
