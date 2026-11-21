@@ -62,7 +62,22 @@ export const WORKING_SEO_CSS = `
 .tbl-bar { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
 .tbl-h2 { font-family: var(--font-serif); font-size: 20px; font-weight: 500; margin: 0; }
 .tbl-filters { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-.tbl-filters select, .tbl-filters input { font-size: 12.5px; padding: 5px 10px; }
+.tbl-filters select { width: auto !important; min-width: 125px; font-size: 12.5px; padding: 5px 10px; }
+.tbl-filters input { width: 190px !important; font-size: 12.5px; padding: 5px 10px; }
+
+.landing-hero.compact { padding: 16px 24px 18px !important; }
+.landing-hero.compact .landing-badge,
+.landing-hero.compact .landing-headline,
+.landing-hero.compact .landing-sub,
+.landing-hero.compact .landing-trust-bar { display: none !important; }
+.landing-hero.compact .landing-input-wrap { margin-bottom: 0 !important; }
+
+.legend-row { display: flex; gap: 14px; font-size: 11px; font-family: var(--font-mono); color: var(--ink-soft); margin-top: 8px; }
+.legend-row span { display: inline-flex; align-items: center; gap: 5px; }
+.legend-row i { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.working-pills { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.work-pill { font-size: 11.5px; padding: 3px 9px; border-radius: 12px; background: var(--good-bg); color: var(--good); border: 1px solid rgba(13,122,62,.18); }
+.fact-inline { display: flex; flex-wrap: wrap; gap: 10px; font-size: 11.5px; color: var(--ink-soft); border-top: 1px solid var(--line); padding-top: 8px; }
 
 .sev-badge { display: inline-block; font-family: var(--font-mono); font-size: 11px; padding: 2px 8px; border-radius: 10px; white-space: nowrap; font-weight: 500; }
 .sev-badge.critical { background: var(--block-bg); color: var(--block); }
@@ -121,7 +136,7 @@ export function renderStoreFirstHomePage(crawls: CrawlRecord[]): string {
 <body>
   ${renderGlobalTopHeader('/')}
 
-  <section class="landing-hero">
+  <section class="landing-hero" id="landing-hero-box">
     <div class="landing-inner">
       <div class="landing-badge"><span class="landing-badge-dot"></span>Free · public data only · local speed &amp; AI readiness checks</div>
       <h1 class="landing-headline">Find SEO, catalogue, and speed problems — <span class="landing-headline-accent">and where to fix them</span></h1>

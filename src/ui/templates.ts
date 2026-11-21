@@ -1005,11 +1005,10 @@ export function renderGlobalTopHeader(activePath?: string): string {
         <span class="logo-badge">The Hub Content · Ecommerce Intelligence v1.0</span>
       </a>
       <nav class="global-nav" aria-label="Shared Platform Navigation">
-        <a href="/" class="global-nav-link ${activePath === '/' ? 'active' : ''}">All tools</a>
-        <a href="/tools/opportunity-dashboard" class="global-nav-link ${activePath === 'opportunity-dashboard' ? 'active' : ''}">Full store audit</a>
+        <a href="/" class="global-nav-link ${activePath === '/' ? 'active' : ''}">Store audit</a>
+        <a href="/tools" class="global-nav-link ${activePath === '/tools' ? 'active' : ''}">Specialist tools</a>
         <a href="/tools/catalogue-scanner" class="global-nav-link ${activePath === 'catalogue-scanner' ? 'active' : ''}">Product quality</a>
-        <a href="/tools/metadata-auditor" class="global-nav-link ${activePath === 'metadata-auditor' ? 'active' : ''}">Google titles &amp; headings</a>
-        <a href="/coverage" class="global-nav-link ${activePath === '/coverage' ? 'active' : ''}">Saved scans</a>
+        <a href="/tools/metadata-auditor" class="global-nav-link ${activePath === 'metadata-auditor' ? 'active' : ''}">Titles &amp; headings</a>
       </nav>
     </header>
   </div>`;

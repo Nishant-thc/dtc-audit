@@ -15,6 +15,7 @@
     sort: 'severity',
     pageTab: 'all',
     pageQ: '',
+    showAllIssues: false,
     expandedRows: {},
     showAllUrls: {},
   };
@@ -126,6 +127,13 @@
       );
     }).join('');
 
+    const pageLegend =
+      '<div class="legend-row">' +
+        '<span><i style="background:var(--good)"></i> Good</span>' +
+        '<span><i style="background:var(--warn)"></i> Needs work</span>' +
+        '<span><i style="background:var(--block)"></i> Broken</span>' +
+      '</div>';
+
     const sc = vs.severityCounts;
     const sevTiles =
       '<div class="sev-tiles">' +
@@ -135,26 +143,40 @@
       '</div>' +
       '<div class="chart-hint">Click a severity tile to filter the issues table below.</div>';
 
-    const hm = vs.heatmap;
-    const hmTable =
-      '<table class="hm-table"><thead><tr><th></th>' +
-      hm.pageTypes.map(function (pt) { return '<th>' + esc(pt.label) + '</th>'; }).join('') +
-      '</tr></thead><tbody>' +
-      hm.rows.map(function (r) {
-        return '<tr><td class="hm-row-lbl">' + esc(r.areaLabel) + '</td>' +
-          r.cells.map(function (c) {
-            return '<td style="' + heatColor(c.affectedPct) + '" onclick="filterAreaAndWhere(\'' + r.areaId + '\',\'' + c.pageType + '\')" title="' + c.affected + ' of ' + c.checked + ' pages">' +
-              (c.affectedPct ? c.affectedPct + '%' : '0%') + '</td>';
-          }).join('') + '</tr>';
-      }).join('') +
-      '</tbody></table>';
+    function formatPassedLabel(t) {
+      const s = String(t || '').trim();
+      if (/^(AI |Clean |Valid |Proper |Good |All )/i.test(s) || /allowed/i.test(s)) return s;
+      if (/^Missing /i.test(s)) return s.replace(/^Missing /i, 'Has ');
+      if (/^Pages missing /i.test(s)) return s.replace(/^Pages missing /i, 'All pages have ');
+      if (/^Product pages missing /i.test(s)) return s.replace(/^Product pages missing /i, 'All products have ');
+      return 'No ' + s.charAt(0).toLowerCase() + s.slice(1);
+    }
+
+    const passedChecks = v.areas.flatMap(function (a) {
+      return a.ruleResults.filter(function (r) { return r.kind === 'issue' && r.status === 'pass'; });
+    });
+    const topPassed = passedChecks.slice(0, 6);
+    const workingPills =
+      '<div class="working-pills">' +
+        topPassed.map(function (r) {
+          return '<span class="work-pill">✓ ' + esc(formatPassedLabel(r.title)) + '</span>';
+        }).join('') +
+        (passedChecks.length > topPassed.length
+          ? '<span class="work-pill" style="background:var(--bg);color:var(--ink-soft);">+' + (passedChecks.length - topPassed.length) + ' more passed</span>'
+          : '') +
+      '</div>';
+
+    const keyFacts = (v.storeSnapshot || []).slice(0, 3).map(function (s) {
+      return '<span><strong>' + esc(s.label) + ':</strong> ' + esc(s.value) + '</span>';
+    }).join('');
+    const factsStrip = keyFacts ? '<div class="fact-inline">' + keyFacts + '</div>' : '';
 
     document.getElementById('sec-visual-summary').innerHTML =
       '<div class="viz-grid">' +
-        '<div class="viz-card"><div class="viz-title">' + esc(vs.areaChartTitle) + '</div><div class="viz-sub">Score by area (0–100)</div>' + areaBars + '</div>' +
-        '<div class="viz-card"><div class="viz-title">' + esc(vs.pageHealthChartTitle) + '</div><div class="viz-sub">Page health (Good / Needs work / Broken)</div>' + pageBars + '</div>' +
+        '<div class="viz-card"><div class="viz-title">' + esc(vs.areaChartTitle) + '</div><div class="viz-sub">Score by area (0–100) · click any bar to filter</div>' + areaBars + '</div>' +
+        '<div class="viz-card"><div class="viz-title">' + esc(vs.pageHealthChartTitle) + '</div><div class="viz-sub">Page health by template (good / total)</div>' + pageBars + pageLegend + '</div>' +
         '<div class="viz-card"><div class="viz-title">' + sc.critical + ' critical, ' + sc.warning + ' warnings, ' + sc.minor + ' minor</div><div class="viz-sub">Issues by severity</div>' + sevTiles + '</div>' +
-        '<div class="viz-card"><div class="viz-title">Where issues sit</div><div class="viz-sub">% of checked pages affected by area &amp; page type</div>' + hmTable + '</div>' +
+        '<div class="viz-card"><div class="viz-title">✓ ' + passedChecks.length + ' checks passed</div><div class="viz-sub">What\'s working well across your store</div>' + workingPills + factsStrip + '</div>' +
       '</div>' +
       '<div class="cov-line">' + esc(vs.coverageLine) + '</div>';
   }
@@ -199,9 +221,14 @@
       if (uniqueOwners.indexOf(r.owner) === -1) uniqueOwners.push(r.owner);
     });
 
+    const visibleRows = (!ui.showAllIssues && filtered.length > 10) ? filtered.slice(0, 10) : filtered;
+    const isTruncated = filtered.length > 10 && !ui.showAllIssues;
+
     const controls =
       '<div class="tbl-bar">' +
-        '<div><h2 class="tbl-h2">' + filtered.length + ' issue' + (filtered.length === 1 ? '' : 's') + ' found</h2></div>' +
+        '<div><h2 class="tbl-h2">' + filtered.length + ' issue' + (filtered.length === 1 ? '' : 's') + ' found' +
+          (isTruncated ? ' <span style="font-size:12.5px;font-weight:400;color:var(--ink-soft);font-family:var(--font-sans);">(showing top 10 priority)</span>' : '') +
+        '</h2></div>' +
         '<div class="tbl-filters">' +
           '<select onchange="setIssueFilter(\'sev\', this.value)">' +
             '<option value="all"' + (ui.sev === 'all' ? ' selected' : '') + '>All severities</option>' +
@@ -226,16 +253,16 @@
             '<option value="pages"' + (ui.sort === 'pages' ? ' selected' : '') + '>Sort: Pages affected</option>' +
             '<option value="area"' + (ui.sort === 'area' ? ' selected' : '') + '>Sort: Area</option>' +
           '</select>' +
-          '<input type="text" placeholder="Search issues or URLs…" value="' + esc(ui.q) + '" oninput="setIssueFilter(\'q\', this.value)" style="width:190px;" />' +
+          '<input type="text" placeholder="Search issues or URLs…" value="' + esc(ui.q) + '" oninput="setIssueFilter(\'q\', this.value)" />' +
           (ui.sev !== 'all' || ui.area !== 'all' || ui.where !== 'all' || ui.owner !== 'all' || ui.q
             ? '<button type="button" class="btn" onclick="resetIssueFilters()">Clear</button>'
             : '') +
         '</div>' +
       '</div>';
 
-    const bodyHtml = filtered.length === 0
+    const bodyHtml = visibleRows.length === 0
       ? '<tr><td colspan="8" style="padding:20px;color:var(--ink-soft);text-align:center;">No issues match these filters.</td></tr>'
-      : filtered.map(function (r) {
+      : visibleRows.map(function (r) {
           const open = Boolean(ui.expandedRows[r.rowId]);
           const done = isFixed(v.crawl.domain, r.rowId);
           const showAll = Boolean(ui.showAllUrls[r.rowId]);
@@ -301,11 +328,19 @@
           return mainRow + detailRow;
         }).join('');
 
+    const showMoreBar = filtered.length > 10
+      ? '<div style="padding:12px 18px;border-top:1px solid var(--border);display:flex;justify-content:center;">' +
+          '<button type="button" class="btn" onclick="toggleShowAllIssues()">' +
+            (ui.showAllIssues ? 'Show top 10 priority issues' : 'Show all ' + filtered.length + ' issues (' + (filtered.length - 10) + ' more)') +
+          '</button>' +
+        '</div>'
+      : '';
+
     document.getElementById('sec-issues-table').innerHTML =
       '<div class="panel"><div class="panel-body" style="padding:16px 18px 0;">' + controls + '</div>' +
       '<div class="ex-table-wrap"><table class="ex-table"><thead><tr>' +
         '<th>Severity</th><th>Issue</th><th>Where</th><th>Pages</th><th>Example</th><th>Action</th><th>Owner · time</th><th></th>' +
-      '</tr></thead><tbody>' + bodyHtml + '</tbody></table></div></div>';
+      '</tr></thead><tbody>' + bodyHtml + '</tbody></table></div>' + showMoreBar + '</div>';
   }
 
   /* ---------------- Pages Table (Good / Needs work / Broken) ---------------- */
@@ -452,6 +487,7 @@
   window.resetIssueFilters = function () { ui.sev = 'all'; ui.area = 'all'; ui.where = 'all'; ui.owner = 'all'; ui.q = ''; renderHeaderAndVisuals(activeReport); renderIssuesTable(); };
   window.toggleIssueRow = function (id) { ui.expandedRows[id] = !ui.expandedRows[id]; renderIssuesTable(); };
   window.toggleShowAll = function (id) { ui.showAllUrls[id] = !ui.showAllUrls[id]; renderIssuesTable(); };
+  window.toggleShowAllIssues = function () { ui.showAllIssues = !ui.showAllIssues; renderIssuesTable(); };
   window.toggleMarkFixed = function (id) {
     if (!activeReport) return;
     const k = fixedKey(activeReport.crawl.domain, id);
@@ -556,7 +592,10 @@
 
   function renderAll(v) {
     activeReport = v;
+    ui.showAllIssues = false;
     saveLocalScan(v);
+    const heroBox = document.getElementById('landing-hero-box');
+    if (heroBox) heroBox.classList.add('compact');
     document.getElementById('pre-scan-section').style.display = 'none';
     document.getElementById('verdict-workspace').style.display = 'block';
     renderHeaderAndVisuals(v);

@@ -184,7 +184,9 @@ export function scoreToGrade(score: number | null): 'A' | 'B' | 'C' | 'D' | 'F' 
 
 export function computeCrawlDenominators(db: SharedDatabase, crawlId: string): CrawlDenominators {
   const pages = db.getPages(crawlId);
-  const htmlPages = pages.filter((p) => p.extractionMethod !== 'A' || p.title !== null || p.contentLength > 0);
+  const htmlPages = pages.filter(
+    (p) => (p.extractionMethod !== 'A' || p.title !== null || p.contentLength > 0) && (p.wordCount > 0 || p.title !== null)
+  );
   const okHtmlPages = htmlPages.filter((p) => p.status === 200);
   const deepPages = pages.filter((p) => p.extractionMethod === 'C');
 

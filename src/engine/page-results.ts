@@ -56,11 +56,11 @@ export const CONCISE_RULE_COPY: Record<string, ConciseRuleCopy> = {
     whyTested: 'We checked HTTP status codes on sitemap URLs. Sitemaps should only list live 200 OK canonical destinations.',
   },
   'ATLAS-001': {
-    issue: 'Indexable pages missing from sitemap',
-    action: 'Include all live indexable pages in your XML sitemap',
+    issue: 'Live pages missing from sitemap',
+    action: 'Include all live store pages in your XML sitemap',
     severity: 'warning',
-    threshold: 'All 200 OK indexable pages listed in sitemap.xml',
-    whyTested: 'We compared crawled indexable URLs against sitemap.xml. Missing URLs take longer for search engines to discover.',
+    threshold: 'All 200 OK live pages listed in sitemap.xml',
+    whyTested: 'We compared crawled live URLs against sitemap.xml. Missing URLs take longer for search engines to discover.',
   },
   'ATLAS-003': {
     issue: 'Missing or mismatched canonical tag',
@@ -113,7 +113,7 @@ export const CONCISE_RULE_COPY: Record<string, ConciseRuleCopy> = {
   },
   'SCHEMA-002': {
     issue: 'Product or Offer schema missing fields',
-    action: 'Populate sku, brand, aggregateRating, and priceValidUntil in JSON-LD',
+    action: 'Add missing product details (SKU, brand, rating) to Product schema',
     severity: 'warning',
     threshold: 'All required & recommended Product/Offer fields set',
     whyTested: 'We validated Product and Offer JSON-LD properties against Google rich result requirements.',
@@ -545,8 +545,14 @@ function measureValueForUrl(
     }
     case 'SCHEMA-003':
       return schemas.some((s) => s.schemaType === 'BreadcrumbList') ? 'BreadcrumbList present' : 'Missing BreadcrumbList';
-    case 'SCHEMA-004':
-      return prod ? `Page: ${prod.price ?? 'n/a'} (${prod.availability})` : 'Schema mismatch';
+    case 'SCHEMA-004': {
+      const offer = schemas.find((s) => s.schemaType === 'Offer')?.rawProperties;
+      const scPrice = offer?.price ?? offer?.lowPrice ?? 'n/a';
+      const scAvail = offer?.availability ? String(offer.availability).replace(/^https?:\/\/schema\.org\//i, '') : 'n/a';
+      return prod
+        ? `Schema: ${scPrice} (${scAvail}) vs Page: ${prod.price ?? 'n/a'} (${prod.availability})`
+        : 'Schema disagrees with visible page';
+    }
     case 'CAT-001':
       return prod ? `${prod.descriptionWordCount} words` : 'n/a';
     case 'CAT-002':
@@ -595,8 +601,14 @@ export function buildWorkingSeoTables(
 } {
   const allPages = db.getPages(crawl.crawlId);
   const checkedPages = allPages.filter(
-    (p) => p.status === 200 && (p.extractionMethod !== 'A' || p.title !== null || p.contentLength > 0)
+    (p) =>
+      p.status === 200 &&
+      (p.extractionMethod !== 'A' || p.title !== null || p.contentLength > 0) &&
+      (p.wordCount > 0 || p.title !== null)
   );
+  const unreadableCount = allPages.filter(
+    (p) => p.extractionMethod !== 'A' && p.wordCount === 0 && p.title === null
+  ).length;
   const pageByUrl = new Map<string, PageRecord>(allPages.map((p) => [p.sourceUrl, p]));
   const prodByUrl = new Map<string, ProductRecord>(db.getProducts(crawl.crawlId).map((p) => [p.sourceUrl, p]));
   const colByUrl = new Map<string, CollectionRecord>(db.getCollections(crawl.crawlId).map((c) => [c.sourceUrl, c]));
@@ -688,9 +700,22 @@ export function buildWorkingSeoTables(
 
     if (r.status !== 'fail' || r.affectedCount <= 0) continue;
 
-    // Group failing URLs by their REAL normalized pageType (fixes Bug #3!)
+    // Filter out unreadable 0w stubs from HTML-rule affected URLs so we never falsely report them
+    const isDiscoveryRule =
+      r.ruleId === 'ATLAS-001' ||
+      r.ruleId === 'LINK-001' ||
+      r.ruleId === 'LINK-002' ||
+      r.ruleId === 'FACET-001' ||
+      r.ruleId === 'FACET-002';
+    const checkedUrlSet = new Set(checkedPages.map((p) => p.sourceUrl));
+    const cleanUrls = isDiscoveryRule
+      ? r.affectedUrls
+      : r.affectedUrls.filter((u) => checkedUrlSet.has(u) || !pageByUrl.has(u));
+    if (cleanUrls.length === 0 && !isDiscoveryRule) continue;
+
+    // Consolidate to ONE clean row per rule (no 5x duplicate rows!), summarizing where it occurs
     const affectedByBucket = new Map<PageType | 'sitewide', string[]>();
-    for (const u of r.affectedUrls) {
+    for (const u of cleanUrls) {
       const p = pageByUrl.get(u);
       const bucket: PageType | 'sitewide' = p ? normalizePageTypeBucket(p.pageType) : 'sitewide';
       const arr = affectedByBucket.get(bucket) ?? [];
@@ -698,86 +723,82 @@ export function buildWorkingSeoTables(
       affectedByBucket.set(bucket, arr);
     }
 
-    if (affectedByBucket.size === 0) {
-      affectedByBucket.set('sitewide', []);
-    }
+    const bucketKeys = Array.from(affectedByBucket.keys());
+    const primaryBucket: PageType | 'sitewide' = bucketKeys.length === 1 ? bucketKeys[0] : 'sitewide';
+    const whereLabel =
+      bucketKeys.length === 1
+        ? pageTypeLabel(bucketKeys[0])
+        : bucketKeys.length === 2
+          ? `${pageTypeLabel(bucketKeys[0]).replace(/ pages$/, '')} & ${pageTypeLabel(bucketKeys[1]).replace(/ pages$/, '')}`
+          : 'All templates';
 
-    for (const [bucket, urls] of affectedByBucket.entries()) {
-      const bucketCheckedPages = bucket === 'sitewide' ? checkedPages : checkedByBucket.get(bucket) ?? [];
-      const isDiscoveryRule = r.ruleId === 'ATLAS-001' || r.ruleId === 'LINK-001' || r.ruleId === 'LINK-002' || r.ruleId === 'FACET-001' || r.ruleId === 'FACET-002';
-      const checkedCount =
-        bucket === 'sitewide'
-          ? Math.max(r.applicableCount, urls.length)
-          : isDiscoveryRule
-            ? Math.max(
-                urls.length,
-                allPages.filter((p) => normalizePageTypeBucket(p.pageType) === bucket).length
-              )
-            : Math.max(urls.length, bucketCheckedPages.length);
+    const bucketCheckedPages =
+      primaryBucket === 'sitewide' ? checkedPages : checkedByBucket.get(primaryBucket) ?? checkedPages;
+    const checkedCount = isDiscoveryRule
+      ? Math.max(cleanUrls.length, r.applicableCount)
+      : Math.max(cleanUrls.length, primaryBucket === 'sitewide' ? checkedPages.length : bucketCheckedPages.length);
 
-      const passingUrls = bucketCheckedPages
-        .filter((p) => !affectedSet.has(p.sourceUrl))
-        .map((p) => p.sourceUrl);
+    const passingUrls = bucketCheckedPages
+      .filter((p) => !affectedSet.has(p.sourceUrl))
+      .map((p) => p.sourceUrl);
 
-      const affectedItems: IssueRowItem[] = urls.slice(0, 50).map((u) => ({
-        url: u,
-        currentValue: measureValueForUrl(
-          r.ruleId,
-          u,
-          pageByUrl.get(u),
-          prodByUrl.get(u),
-          colByUrl.get(u),
-          cntByUrl.get(u),
-          imgsByUrl.get(u) ?? [],
-          schemasByUrl.get(u) ?? []
-        ),
-      }));
+    const affectedItems: IssueRowItem[] = cleanUrls.slice(0, 50).map((u) => ({
+      url: u,
+      currentValue: measureValueForUrl(
+        r.ruleId,
+        u,
+        pageByUrl.get(u),
+        prodByUrl.get(u),
+        colByUrl.get(u),
+        cntByUrl.get(u),
+        imgsByUrl.get(u) ?? [],
+        schemasByUrl.get(u) ?? []
+      ),
+    }));
 
-      const affectedCount = urls.length > 0 ? urls.length : r.affectedCount;
-      const whereLabel = pageTypeLabel(bucket);
-      const matchingTask = verdict.allTasks.find((t) => t.ruleIds.includes(r.ruleId));
-      const platformSteps = matchingTask?.platformSteps ?? pb?.actionSteps ?? [shortAction];
-      const beforeAfter = matchingTask?.beforeAfter ?? [];
+    const affectedCount = cleanUrls.length > 0 ? cleanUrls.length : r.affectedCount;
+    const matchingTask = verdict.allTasks.find((t) => t.ruleIds.includes(r.ruleId));
+    const platformSteps = matchingTask?.platformSteps ?? pb?.actionSteps ?? [shortAction];
+    const beforeAfter = matchingTask?.beforeAfter ?? [];
 
-      const ticketLines = [
-        `## ${shortIssue} (${whereLabel})`,
-        `- **Store:** ${crawl.domain} (${crawl.platform})`,
-        `- **Severity:** ${sev.toUpperCase()} · **Pages:** ${affectedCount} of ${checkedCount}`,
-        `- **Action:** ${shortAction}`,
-        `- **Owner:** ${r.owner} · **Effort:** ${effortLabel}`,
-        '',
-        '### Steps',
-        ...platformSteps.map((s, i) => `${i + 1}. ${s}`),
-        '',
-        '### Sample URLs',
-        ...urls.slice(0, 10).map((u) => `- ${u}`),
-      ];
+    const ticketLines = [
+      `## ${shortIssue} (${whereLabel})`,
+      `- **Store:** ${crawl.domain} (${crawl.platform})`,
+      `- **Severity:** ${sev.toUpperCase()} · **Scope:** ${affectedCount} of ${checkedCount} ${isDiscoveryRule ? 'discovered URLs' : 'checked pages'}`,
+      `- **Action:** ${shortAction}`,
+      `- **Owner:** ${r.owner} · **Effort:** ${effortLabel}`,
+      '',
+      '### Steps',
+      ...platformSteps.map((s, i) => `${i + 1}. ${s}`),
+      '',
+      '### Sample URLs',
+      ...cleanUrls.slice(0, 10).map((u) => `- ${u}`),
+    ];
 
-      issueRows.push({
-        rowId: `${r.ruleId}_${bucket}`,
-        ruleId: r.ruleId,
-        severity: sev,
-        areaId: r.areaId,
-        areaLabel,
-        issue: shortIssue,
-        pageType: bucket,
-        whereLabel,
-        affectedCount,
-        checkedCount,
-        affectedPct: checkedCount > 0 ? Math.round((affectedCount / checkedCount) * 100) : 0,
-        exampleUrl: urls[0] ?? null,
-        action: shortAction,
-        owner: r.owner.replace(' / Content Team', '').replace(' / Web Developer', ' Dev').replace(' / Marketing Manager', ''),
-        effortLabel,
-        affectedItems,
-        passingUrls,
-        platformSteps,
-        beforeAfter,
-        whyTested: copy?.whyTested ?? pb?.whyItHurts ?? '',
-        threshold: copy?.threshold ?? '',
-        ticketMarkdown: ticketLines.join('\n'),
-      });
-    }
+    issueRows.push({
+      rowId: r.ruleId,
+      ruleId: r.ruleId,
+      severity: sev,
+      areaId: r.areaId,
+      areaLabel,
+      issue: shortIssue,
+      pageType: primaryBucket,
+      whereLabel,
+      affectedCount,
+      checkedCount,
+      affectedPct: checkedCount > 0 ? Math.round((affectedCount / checkedCount) * 100) : 0,
+      exampleUrl: cleanUrls[0] ?? null,
+      action: shortAction,
+      owner: r.owner.replace(' / Content Team', '').replace(' / Web Developer', ' Dev').replace(' / Marketing Manager', ''),
+      effortLabel,
+      affectedItems,
+      passingUrls,
+      platformSteps,
+      beforeAfter,
+      whyTested: copy?.whyTested ?? pb?.whyItHurts ?? '',
+      threshold: copy?.threshold ?? '',
+      ticketMarkdown: ticketLines.join('\n'),
+    });
   }
 
   const sevOrder: Record<IssueSeverity, number> = { critical: 3, warning: 2, minor: 1 };
@@ -793,16 +814,21 @@ export function buildWorkingSeoTables(
     const warningCount = failed.filter((c) => c.severity === 'warning').length;
     const minorCount = failed.filter((c) => c.severity === 'minor').length;
 
+    // Calibrated status so healthy pages without critical blockers or multiple warnings show as Good
     const status: PageAuditRow['status'] =
-      p.status !== 200 || criticalCount > 0 ? 'broken' : warningCount > 0 ? 'needs_work' : 'good';
+      p.status !== 200 || criticalCount > 0
+        ? 'broken'
+        : warningCount >= 3
+          ? 'needs_work'
+          : 'good';
 
     const topFailed = failed.sort((a, b) => sevOrder[b.severity] - sevOrder[a.severity])[0];
     const imgs = imgsByUrl.get(p.sourceUrl) ?? [];
     const imgsAlt = imgs.filter((i) => i.hasAlt).length;
     const keyBits = [
-      p.title ? `Title ${p.title.length}c` : 'No title',
+      p.title ? `Title ${p.title.length} chars` : 'No title',
       `${p.h1List.length} H1`,
-      `${p.wordCount}w`,
+      `${p.wordCount.toLocaleString()} words`,
       imgs.length > 0 ? `${imgsAlt}/${imgs.length} alt` : null,
     ].filter(Boolean);
 
@@ -883,7 +909,9 @@ export function buildWorkingSeoTables(
   const colN = d.byPageTypeHtml.collection + d.byPageTypeHtml.category;
   const blogN = d.byPageTypeHtml.blog + d.byPageTypeHtml.informational;
   const otherN = Math.max(0, d.okHtmlPages - prodN - colN - blogN);
-  const coverageLine = `Checked ${d.okHtmlPages} of ${d.discoveredUrls.toLocaleString()} URLs (${prodN} product, ${colN} collection, ${blogN} blog, ${otherN} other). ${
+  const coverageLine = `Checked ${d.okHtmlPages} readable pages of ${d.discoveredUrls.toLocaleString()} URLs found (${prodN} product, ${colN} collection, ${blogN} blog, ${otherN} other)${
+    unreadableCount > 0 ? ` · ${unreadableCount} empty/blocked responses excluded` : ''
+  }. ${
     verdict.localSpeed.browserVitals.measured
       ? `Lab speed measured on ${verdict.localSpeed.browserVitals.sampleCount} pages.`
       : 'Speed vitals not measured — run a deep scan.'
